@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#6c63ff">
+    <title>Ollama Chat</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Configuration must be loaded before main script -->
+    <script src="/static/config.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Ollama Chat</h1>
+            <div class="model-selector">
+                <label for="model-select">Model:</label>
+                <select id="model-select">
+                    <option value="llama2">Llama2</option>
+                    <option value="mistral:7b" selected>Mistral 7B</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="chat-container" id="chat-container">
+            <div class="welcome-message">
+                <h2>Merhaba!</h2>
+                <p>Yapay zeka modellerimizle sohbet etmek için aşağıya bir mesaj yazın.</p>
+            </div>
+            <!-- Chat messages will be appended here -->
+        </div>
+        
+        <div class="input-container">
+            <textarea id="user-input" placeholder="Bir şeyler sorun..." autofocus></textarea>
+            <button id="send-button">Gönder</button>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
