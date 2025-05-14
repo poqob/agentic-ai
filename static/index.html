@@ -20,19 +20,65 @@
                     <option value="mistral:7b" selected>Mistral 7B</option>
                 </select>
             </div>
-        </div>
-        
-        <div class="chat-container" id="chat-container">
-            <div class="welcome-message">
-                <h2>Merhaba!</h2>
-                <p>Yapay zeka modellerimizle sohbet etmek için aşağıya bir mesaj yazın.</p>
+            <div class="tab-selector">
+                <button id="chat-tab" class="tab active">Sohbet</button>
+                <button id="image-tab" class="tab">Görsel Analiz</button>
             </div>
-            <!-- Chat messages will be appended here -->
         </div>
         
-        <div class="input-container">
-            <textarea id="user-input" placeholder="Bir şeyler sorun..." autofocus></textarea>
-            <button id="send-button">Gönder</button>
+        <div id="chat-view">
+            <div class="chat-container" id="chat-container">
+                <div class="welcome-message">
+                    <h2>Merhaba!</h2>
+                    <p>Yapay zeka modellerimizle sohbet etmek için aşağıya bir mesaj yazın.</p>
+                </div>
+                <!-- Chat messages will be appended here -->
+            </div>
+            
+            <div class="input-container">
+                <textarea id="user-input" placeholder="Bir şeyler sorun..." autofocus></textarea>
+                <button id="send-button">Gönder</button>
+            </div>
+        </div>
+        
+        <div id="image-view" style="display:none;">
+            <div class="image-container">
+                <div class="upload-section">
+                    <h2>Görsel Analizi</h2>
+                    <p>Bir görsel yükleyin ve yapay zeka modeli analiz etsin.</p>
+                    
+                    <form id="image-upload-form" enctype="multipart/form-data">
+                        <div class="file-input-container">
+                            <input type="file" id="image-input" name="image" accept="image/*">
+                            <label for="image-input" class="file-input-button">Görsel Seç</label>
+                            <span id="file-name">Dosya seçilmedi</span>
+                        </div>
+                        <div class="options-container">
+                            <div class="explain-option">
+                                <input type="checkbox" id="explain-results" name="explain-results" checked>
+                                <label for="explain-results">Sonuçları dil modeliyle açıkla</label>
+                            </div>
+                            <div class="stream-option">
+                                <input type="checkbox" id="stream-results" name="stream-results" checked>
+                                <label for="stream-results">Gerçek zamanlı akış kullan</label>
+                            </div>
+                            <button type="submit" id="analyze-button">Analiz Et</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="result-section">
+                    <div id="image-preview-container" style="display:none;">
+                        <h3>Yüklenen Görsel:</h3>
+                        <img id="image-preview" src="#" alt="Yüklenen görsel">
+                    </div>
+                    
+                    <div id="prediction-result" style="display:none;">
+                        <h3>Analiz Sonucu:</h3>
+                        <div id="prediction-content"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -7,6 +7,14 @@ import os
 # API Configuration
 OLLAMA_API_HOST = os.environ.get("OLLAMA_API_HOST", "http://localhost:11434")
 
+# Regression Model API Configuration
+REGRESSION_API_HOST = os.environ.get("REGRESSION_API_HOST", "http://localhost:5001")
+REGRESSION_PREDICT_ENDPOINT = "/predict"
+
+# Image Classification API Configuration
+IMAGE_API_HOST = os.environ.get("IMAGE_API_HOST", "http://localhost:5003")
+IMAGE_PREDICT_ENDPOINT = "/predict"
+
 # Server Configuration
 HOST = '0.0.0.0'
 PORT = 5000

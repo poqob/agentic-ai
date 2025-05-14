@@ -8,7 +8,12 @@ const CONFIG = {
         GENERATE: '/api/generate',
         GENERATE_STREAM: '/api/generate/stream',
         CHAT: '/api/chat',
-        CHAT_STREAM: '/api/chat/stream'
+        CHAT_STREAM: '/api/chat/stream',
+        REGRESSION_PREDICT: '/api/regression/predict',
+        REGRESSION_PREDICT_FROM_TEXT: '/api/regression/predict_from_text',
+        IMAGE_PREDICT: '/api/image/predict',
+        IMAGE_PREDICT_WITH_EXPLANATION: '/api/image/predict_with_explanation',
+        IMAGE_PREDICT_WITH_EXPLANATION_STREAM: '/api/image/predict_with_explanation/stream'
     },
     
     // Default model
