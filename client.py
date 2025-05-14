@@ -208,6 +208,8 @@ def process_regression_request_from_prompt(user_message, model="mistral:7b"):
         
         # Get the extracted JSON from the LLM response
         try:
+            # Initialize llm_content as empty in case of early error
+            llm_content = ""
             response_json = extraction_response.json()
             # Check Ollama API response format (might be different based on version)
             if "message" in response_json and "content" in response_json["message"]:
@@ -332,7 +334,7 @@ def control_home_lights(room, turn_on=True):
     Control the lights in a specified room of the home
     
     Args:
-        room: String name of the room (e.g., "salon", "yatak odası", "tuvalet", etc.)
+        room: String name of the room (e.g., "living_room", "bedroom", "toilet", etc.)
         turn_on: Boolean indicating whether to turn lights on (True) or off (False)
         
     Returns:
@@ -442,14 +444,12 @@ def process_lights_command_from_text(user_message, model="mistral:7b"):
     You must understand commands in both Turkish and English.
 
     The following rooms are supported for light control:
-    - living room (salon, oturma odası, misafir odası, lounge, etc.)
+    - living_room (salon, oturma odası, misafir odası, lounge, etc.)
+    - sitting_room (sitting room, oturulan, sitting area)
     - kitchen (mutfak)
     - bedroom (yatak odası, uyku odası)
-    - bathroom (banyo)
+    - bathroom (banyo, duş, shower)
     - toilet (tuvalet, wc, lavabo, etc.)
-    - kids room (çocuk odası, children's room)
-    - office (ofis, çalışma odası, study room)
-    - hallway (koridor, corridor)
 
     The output you provide should be in the following format:
     {
@@ -458,19 +458,45 @@ def process_lights_command_from_text(user_message, model="mistral:7b"):
     }
 
     Examples:
-    - "Turn on the living room lights" -> {"room": "living room", "lights": true}
+    - "Turn on the living room lights" -> {"room": "living_room", "lights": true}
     - "Turn off the kitchen lights" -> {"room": "kitchen", "lights": false}
     - "Switch off the bedroom lamp" -> {"room": "bedroom", "lights": false}
-    - "Salonun ışıklarını aç" -> {"room": "living room", "lights": true}
+    - "Salonun ışıklarını aç" -> {"room": "living_room", "lights": true}
     - "Mutfaktaki ışıkları kapat" -> {"room": "kitchen", "lights": false}
     - "Yatak odasındaki lambayı söndür" -> {"room": "bedroom", "lights": false}
 
-    If the user message does not specify a room or specifies a room that is not supported, default to "living room."
+    If the user message does not specify a room or specifies a room that is not supported, default to "living_room."
 
     If the instruction to turn on or off is not specified, default to turning the lights on (lights: true).
 
     Only return the JSON output, do not include any additional explanation.
     """
+    
+    # Try to determine room and action directly from keywords
+    def extract_from_keywords(text):
+        text = text.lower()
+        room = "living_room"  # Default room
+        turn_on = True  # Default action
+        
+        # Room keywords
+        if any(kw in text for kw in ["salon", "living room", "oturma", "misafir", "lounge"]):
+            room = "living_room"
+        elif any(kw in text for kw in ["sitting", "sitting room", "oturulan", "sitting area"]):
+            room = "sitting_room"    
+        elif any(kw in text for kw in ["mutfak", "kitchen"]):
+            room = "kitchen"
+        elif any(kw in text for kw in ["yatak", "bedroom", "uyku", "sleep"]):
+            room = "bedroom"
+        elif any(kw in text for kw in ["banyo", "bathroom", "duş", "shower"]):
+            room = "bathroom"
+        elif any(kw in text for kw in ["tuvalet", "toilet", "wc", "lavabo"]):
+            room = "toilet"
+        
+        # Action keywords
+        if any(kw in text for kw in ["kapat", "söndür", "turn off", "switch off", "off"]):
+            turn_on = False
+        
+        return room, turn_on
     
     # Ask LLM to extract structured data
     try:
@@ -479,6 +505,12 @@ def process_lights_command_from_text(user_message, model="mistral:7b"):
         import re
         import traceback
         from config import OLLAMA_API_HOST
+        
+        print(f"[DEBUG] Processing lights command: '{user_message}' with model '{model}'")
+        
+        # First extract info using keyword matching as fallback
+        fallback_room, fallback_turn_on = extract_from_keywords(user_message)
+        print(f"[DEBUG] Fallback extraction: room='{fallback_room}', action={fallback_turn_on}")
         
         extraction_response = requests.post(
             f"{OLLAMA_API_HOST}/api/chat",
@@ -492,59 +524,92 @@ def process_lights_command_from_text(user_message, model="mistral:7b"):
         )
         
         if extraction_response.status_code != 200:
-            return {
-                "success": False,
-                "error": f"LLM API Hatası: {extraction_response.status_code}"
-            }
+            print(f"[ERROR] LLM API error: {extraction_response.status_code}")
+            # Use fallback if LLM API fails
+            print(f"[INFO] Using fallback values: room='{fallback_room}', action={fallback_turn_on}")
+            return control_home_lights(fallback_room, fallback_turn_on)
         
         # Get the extracted JSON from the LLM response
         try:
-            response_json = extraction_response.json()
-            # Check Ollama API response format
-            if "message" in response_json and "content" in response_json["message"]:
-                llm_content = response_json["message"]["content"]
-            elif "response" in response_json:
-                # Alternative format in some Ollama versions
-                llm_content = response_json["response"]
-            else:
-                return {
-                    "success": False,
-                    "error": f"Beklenmeyen LLM API yanıt formatı",
-                    "response_structure": str(response_json.keys())
-                }
+            # Initialize llm_content as empty in case of early error
+            llm_content = ""
             
+            try:
+                response_json = extraction_response.json()
+                print(f"[DEBUG] Response JSON keys: {list(response_json.keys())}")
+                
+                # Check Ollama API response format
+                if "message" in response_json and "content" in response_json["message"]:
+                    llm_content = response_json["message"]["content"]
+                    print(f"[DEBUG] Found content in message.content: {llm_content[:50]}...")
+                elif "response" in response_json:
+                    # Alternative format in some Ollama versions
+                    llm_content = response_json["response"]
+                    print(f"[DEBUG] Found content in response: {llm_content[:50]}...")
+                else:
+                    print(f"[WARNING] Unexpected API format with keys: {list(response_json.keys())}")
+                    # Use fallback values
+                    print(f"[INFO] Using fallback values: room='{fallback_room}', action={fallback_turn_on}")
+                    return control_home_lights(fallback_room, fallback_turn_on)
+            except json.JSONDecodeError as je:
+                print(f"[ERROR] Response not valid JSON: {str(je)}")
+                print(f"[DEBUG] Raw response: {extraction_response.text[:200]}")
+                # Use fallback values
+                print(f"[INFO] Using fallback values: room='{fallback_room}', action={fallback_turn_on}")
+                return control_home_lights(fallback_room, fallback_turn_on)
+            
+            # Check if llm_content is empty or too short
+            if not llm_content or len(llm_content.strip()) < 2:
+                print("[WARNING] LLM returned empty or too short content")
+                # Use fallback values
+                print(f"[INFO] Using fallback values: room='{fallback_room}', action={fallback_turn_on}")
+                return control_home_lights(fallback_room, fallback_turn_on)
+                
             # Try to find and extract JSON from the text
             json_match = re.search(r'\{.*\}', llm_content, re.DOTALL)
             if json_match:
-                llm_content = json_match.group(0)
-                
-            # Parse the JSON data
-            parsed_data = json.loads(llm_content)
-            # Extract the room and action
-            room = parsed_data.get("room", "salon")
-            turn_on = parsed_data.get("lights", True)
-            
-            # Control the lights
-            result = control_home_lights(room, turn_on)
-            return result
+                json_str = json_match.group(0)
+                print(f"[DEBUG] Extracted JSON: {json_str}")
+                try:
+                    # Parse the JSON data
+                    parsed_data = json.loads(json_str)
+                    # Extract the room and action
+                    room = parsed_data.get("room", fallback_room)
+                    turn_on = parsed_data.get("lights", fallback_turn_on)
+                    
+                    print(f"[DEBUG] Successfully extracted: room='{room}', action={turn_on}")
+                    
+                    # Control the lights
+                    result = control_home_lights(room, turn_on)
+                    return result
+                except json.JSONDecodeError:
+                    print(f"[ERROR] Extracted pattern is not valid JSON: {json_str}")
+                    # Use fallback values
+                    print(f"[INFO] Using fallback values: room='{fallback_room}', action={fallback_turn_on}")
+                    return control_home_lights(fallback_room, fallback_turn_on)
+            else:
+                print(f"[WARNING] No JSON pattern found in: {llm_content}")
+                # Use fallback values
+                print(f"[INFO] Using fallback values: room='{fallback_room}', action={fallback_turn_on}")
+                return control_home_lights(fallback_room, fallback_turn_on)
                 
         except json.JSONDecodeError:
-            return {
-                "success": False,
-                "error": "LLM çıktısı JSON olarak ayrıştırılamadı",
-                "llm_output": llm_content
-            }
+            print(f"[ERROR] JSON decode error for content: '{llm_content}'")
+            # Use fallback values
+            print(f"[INFO] Using fallback values: room='{fallback_room}', action={fallback_turn_on}")
+            return control_home_lights(fallback_room, fallback_turn_on)
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"İşleme hatası: {str(e)}",
-                "traceback": traceback.format_exc()
-            }
+            print(f"[ERROR] Processing error: {str(e)}")
+            traceback.print_exc()
+            # Use fallback values
+            print(f"[INFO] Using fallback values: room='{fallback_room}', action={fallback_turn_on}")
+            return control_home_lights(fallback_room, fallback_turn_on)
             
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"LLM istek hatası: {str(e)}",
-            "traceback": traceback.format_exc(),
-            "prompt": system_prompt[:100] + "..." # İlk başlangıç kısmını hataya ekliyoruz
-        }
+        print(f"[ERROR] LLM request error: {str(e)}")
+        traceback.print_exc()
+        
+        # Extract directly from keywords as fallback
+        room, turn_on = extract_from_keywords(user_message)
+        print(f"[INFO] Using fallback extraction: room='{room}', action={turn_on}")
+        return control_home_lights(room, turn_on)

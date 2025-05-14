@@ -85,7 +85,7 @@ def chat():
             
             # Check if the message is related to lights
             light_keywords = ['ışık', 'lamba', 'aydınlat', 'aç', 'kapat', 'söndür', 'yak', 'turn on', 'turn off', 'lights', 'switch on', 'switch off', 'light', 'lamp']
-            room_keywords = ['salon', 'mutfak', 'yatak', 'banyo', 'tuvalet', 'toilet', 'wc', 'çocuk', 'ofis', 'koridor', 'living', 'kitchen', 'bedroom', 'bathroom', 'hallway', 'office']
+            room_keywords = ['salon', 'sitting', 'oturulan', 'mutfak', 'yatak', 'banyo', 'tuvalet', 'toilet', 'wc', 'living', 'kitchen', 'bedroom', 'bathroom']
             
             is_light_command = any(keyword in user_message for keyword in light_keywords) and \
                               any(keyword in user_message for keyword in room_keywords)
@@ -161,7 +161,7 @@ def chat_stream():
             
             # Check if the message is related to lights
             light_keywords = ['ışık', 'lamba', 'aydınlat', 'aç', 'kapat', 'söndür', 'yak', 'turn on', 'turn off', 'lights', 'switch on', 'switch off', 'light', 'lamp']
-            room_keywords = ['salon', 'mutfak', 'yatak', 'banyo', 'tuvalet', 'toilet', 'wc', 'çocuk', 'ofis', 'koridor', 'living', 'kitchen', 'bedroom', 'bathroom', 'hallway', 'office']
+            room_keywords = ['salon', 'sitting', 'oturulan', 'mutfak', 'yatak', 'banyo', 'tuvalet', 'toilet', 'wc', 'living', 'kitchen', 'bedroom', 'bathroom']
             
             is_light_command = any(keyword in user_message for keyword in light_keywords) and \
                               any(keyword in user_message for keyword in room_keywords)
@@ -734,7 +734,7 @@ def test_lights():
     
     if (is_running):
         # If service is running, attempt a test command
-        result = control_home_lights("salon", True)
+        result = control_home_lights("living_room", True)
         return jsonify({
             "success": True,
             "service_status": "running",
@@ -772,7 +772,7 @@ def toilet_lights_quick_control(action):
         }), 400
     
     # Control the lights
-    result = control_home_lights("tuvalet", turn_on)
+    result = control_home_lights("toilet", turn_on)
     
     # Return result
     if result["success"]:

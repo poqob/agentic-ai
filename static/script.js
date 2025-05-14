@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Hide previous results
             predictionResult.style.display = 'none';
         } else {
-            fileNameSpan.textContent = 'Dosya seçilmedi';
+            fileNameSpan.textContent = 'No file selected';
             imagePreviewContainer.style.display = 'none';
         }
     });
@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const file = imageInput.files[0];
         if (!file) {
-            alert('Lütfen bir görsel seçin');
+            alert('Please select an image');
             return;
         }
         
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Show loading state
-        predictionContent.innerHTML = 'Görsel analiz ediliyor...';
+        predictionContent.innerHTML = 'Analyzing image...';
         predictionResult.style.display = 'block';
         
         // If streaming is enabled and explanation is requested
@@ -122,11 +122,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (result.explanation) {
                     predictionContent.innerHTML = `
                         <div class="prediction-raw">
-                            <h4>Model Çıktısı:</h4>
+                            <h4>Model Output:</h4>
                             <pre>${formattedResult}</pre>
                         </div>
                         <div class="prediction-explanation">
-                            <h4>Açıklama:</h4>
+                            <h4>Explanation:</h4>
                             <div class="explanation-text">${renderMarkdown(result.explanation)}</div>
                         </div>
                     `;
@@ -139,15 +139,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log("API error details:", result.error_details);
                     predictionContent.innerHTML += `
                         <div class="error-details" style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; font-size: 0.9em;">
-                            <h4>Hata Ayrıntıları:</h4>
-                            <p>Dil modeli çalışırken bir sorun oluştu.</p>
+                            <h4>Error Details:</h4>
+                            <p>An issue occurred while running the language model.</p>
                             <pre style="font-size: 0.8em; max-height: 100px; overflow: auto;">${JSON.stringify(result.error_details, null, 2)}</pre>
                         </div>
                     `;
                 }
             } else {
                 // Enhanced error display with additional details if available
-                let errorMessage = result.error || 'Bilinmeyen bir hata oluştu';
+                let errorMessage = result.error || 'Unknown error occurred';
                 let errorDetails = '';
                 
                 // Check if we have traceback information
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error("API Error Traceback:", result.traceback);
                     errorDetails = `
                         <details>
-                            <summary>Teknik Detaylar</summary>
+                            <summary>Technical Details</summary>
                             <pre style="font-size: 0.8em; max-height: 200px; overflow: auto;">${result.traceback}</pre>
                         </details>
                     `;
@@ -163,15 +163,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 predictionContent.innerHTML = `
                     <div class="error-container">
-                        <h4>Hata Oluştu:</h4>
+                        <h4>Error Occurred:</h4>
                         <p>${errorMessage}</p>
                         ${errorDetails}
                         <div class="error-help">
-                            <p>Aşağıdakileri kontrol edin:</p>
+                            <p>Please check:</p>
                             <ul>
-                                <li>Görüntü servisinin çalıştığından emin olun (Port 5003)</li>
-                                <li>Ollama servisinin çalıştığından emin olun (Port 11434)</li>
-                                <li>Uygun boyutta bir görsel yüklediğinizden emin olun</li>
+                                <li>Make sure the image service is running (Port 5003)</li>
+                                <li>Make sure the Ollama service is running (Port 11434)</li>
+                                <li>Make sure you uploaded an appropriate image size</li>
                             </ul>
                         </div>
                     </div>
@@ -188,38 +188,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 
             predictionContent.innerHTML = `
                 <div class="error-container">
-                    <h4>Hata Oluştu:</h4>
+                    <h4>Error Occurred:</h4>
                     <p>${error.message}</p>
                     <details>
-                        <summary>Debug Bilgisi</summary>
+                        <summary>Debug Information</summary>
                         <div class="debug-info">
-                            <p><strong>Kullanılan Endpoint:</strong> ${apiEndpoint}</p>
-                            <p><strong>API Yolları:</strong></p>
+                            <p><strong>Endpoint Used:</strong> ${apiEndpoint}</p>
+                            <p><strong>API Paths:</strong></p>
                             <ul>
                                 <li>Image Predict: ${window.CHAT_CONFIG.API.IMAGE_PREDICT}</li>
                                 <li>Image Predict with Explanation: ${window.CHAT_CONFIG.API.IMAGE_PREDICT_WITH_EXPLANATION}</li>
                             </ul>
-                            <p class="help-note">Not: API yolları "/api/" önekiyle veya öneksiz çalışmalıdır.</p>
+                            <p class="help-note">Note: API paths should work with or without "/api/" prefix.</p>
                         </div>
                     </details>
                     <div class="error-help">
-                        <p>Aşağıdakileri kontrol edin:</p>
+                        <p>Please check:</p>
                         <ul>
-                            <li>Görüntü servisinin çalıştığından emin olun (Port 5003)</li>
-                            <li>Ollama servisinin çalıştığından emin olun (Port 11434)</li>
-                            <li>Uygun bir görsel yüklediğinizden emin olun</li>
-                            <li>Model seçiminizin doğru olduğundan emin olun</li>
+                            <li>Make sure the image service is running (Port 5003)</li>
+                            <li>Make sure the Ollama service is running (Port 11434)</li>
+                            <li>Make sure you uploaded an appropriate image</li>
+                            <li>Make sure your model selection is correct</li>
                         </ul>
                     </div>
                     <details>
-                        <summary>Teknik Detaylar</summary>
+                        <summary>Technical Details</summary>
                         <pre>${JSON.stringify(error, null, 2)}</pre>
                     </details>
-                    <p class="error-help">Hata büyük olasılıkla Ollama API servisinden kaynaklanmaktadır. Aşağıdakileri kontrol edin:</p>
+                    <p class="error-help">The error is likely coming from the Ollama API service. Please check:</p>
                     <ul class="error-tips">
-                        <li>Ollama servisi çalışıyor mu? (Port 11434)</li>
-                        <li>İstenen model (${modelSelect.value}) yüklü mü?</li>
-                        <li>Görüntü dosyası çok büyük olmadığından emin olun.</li>
+                        <li>Is the Ollama service running? (Port 11434)</li>
+                        <li>Is the requested model (${modelSelect.value}) installed?</li>
+                        <li>Make sure the image file is not too large.</li>
                     </ul>
                 </div>
             `;
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Set generation state and update button
             isGenerating = true;
-            updateSendButton(); // Update button to show "Durdur"
+            updateSendButton(); // Update button to show "Stop"
             
             // Create AbortController for image streaming
             currentController = new AbortController();
@@ -240,11 +240,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Prepare the DOM to show streaming results
             predictionContent.innerHTML = `
                 <div class="prediction-raw">
-                    <h4>Model Çıktısı:</h4>
-                    <pre id="prediction-raw-content">Yükleniyor...</pre>
+                    <h4>Model Output:</h4>
+                    <pre id="prediction-raw-content">Loading...</pre>
                 </div>
                 <div class="prediction-explanation">
-                    <h4>Açıklama (Gerçek Zamanlı):</h4>
+                    <h4>Explanation:</h4>
                     <div id="streaming-explanation" class="explanation-text">
                         <div class="typing-indicator"><span></span><span></span><span></span></div>
                     </div>
@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const stopButtonDiv = document.createElement('div');
             stopButtonDiv.className = 'stop-generation-container';
             stopButtonDiv.innerHTML = `
-                <button id="stop-image-generation" class="stop-button">Durdur</button>
+                <button id="stop-image-generation" class="stop-button">Stop</button>
             `;
             predictionContent.appendChild(stopButtonDiv);
             
@@ -348,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                             else if (eventData.type === 'error') {
                                 // Display error message
-                                streamingExplanation.innerHTML = `<div class="error">Hata: ${eventData.message}</div>`;
+                                streamingExplanation.innerHTML = `<div class="error">Error: ${eventData.message}</div>`;
                                 console.error('Streaming error:', eventData.message);
                             }
                         } catch (error) {
@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Reset state
             isGenerating = false;
             currentController = null;
-            updateSendButton(); // Reset button to "Gönder"
+            updateSendButton(); // Reset button to "Send"
             
             // Handle user-initiated abort separately from other errors
             if (error.name === 'AbortError') {
@@ -376,12 +376,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const streamingExplanation = document.getElementById('streaming-explanation');
                 if (streamingExplanation && explanationText.trim() !== '') {
                     streamingExplanation.innerHTML = renderMarkdown(explanationText) + 
-                        '<div class="generation-stopped">(Açıklama üretimi durduruldu)</div>';
+                        '<div class="generation-stopped">(Explanation generation stopped)</div>';
                 } else {
                     // If no explanation text yet, show a simple message
                     predictionContent.innerHTML += `
                         <div class="generation-stopped" style="text-align: center; margin-top: 15px;">
-                            Görsel analiz açıklaması kullanıcı tarafından durduruldu.
+                            Image analysis explanation stopped by user.
                         </div>
                     `;
                 }
@@ -393,13 +393,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 // For other errors, show the full error message
                 predictionContent.innerHTML = `
                     <div class="error-container">
-                        <h4>Streaming Hatası:</h4>
+                        <h4>Streaming Error:</h4>
                         <p>${error.message}</p>
                         <details>
-                            <summary>Teknik Detaylar</summary>
+                            <summary>Technical Details</summary>
                             <pre>${JSON.stringify(error, null, 2)}</pre>
                         </details>
-                        <p class="error-help">Lütfen API servislerin çalıştığından emin olun.</p>
+                        <p class="error-help">Please make sure API services are running.</p>
                     </div>
                 `;
             }
@@ -430,7 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
             select.appendChild(option);
         });
     }).catch(error => {
-        showError('Model listesi yüklenemedi. API çalışıyor mu?');
+        showError('Could not load model list. Is the API running?');
         console.error(error);
     });
     
@@ -486,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             isGenerating = true;
-            updateSendButton(); // Update button to show "Durdur"
+            updateSendButton(); // Update button to show "Stop"
             
             // Get selected model
             const modelName = modelSelect.value;
@@ -527,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.log('Stream complete');
                         isGenerating = false;
                         currentController = null;
-                        updateSendButton(); // Reset button to "Gönder"
+                        updateSendButton(); // Reset button to "Send"
                         
                         // Add assistant message to messages array
                         messages.push({
@@ -592,19 +592,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Fetch error:', error);
                 isGenerating = false;
                 currentController = null;
-                updateSendButton(); // Reset button to "Gönder"
+                updateSendButton(); // Reset button to "Send"
                 
                 // Show error in the message area if it's not an abort error
                 if (error.name !== 'AbortError') {
-                    aiMessageDiv.textContent = 'Bir hata oluştu: ' + error.message;
+                    aiMessageDiv.textContent = 'An error occurred: ' + error.message;
                 } else {
                     // User initiated cancel - keep the partial output
                     if (fullResponse.trim() === '') {
-                        aiMessageDiv.textContent = 'Yanıt üretimi durduruldu.';
+                        aiMessageDiv.textContent = 'Response generation stopped.';
                     } else {
                         // Append a note that generation was stopped
                         aiMessageDiv.innerHTML = renderMarkdown(fullResponse) + 
-                            '<div class="generation-stopped">(Yanıt üretimi durduruldu)</div>';
+                            '<div class="generation-stopped">(Response generation stopped)</div>';
                         
                         // Add the partial response to messages array
                         messages.push({
@@ -622,8 +622,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error:', error);
             isGenerating = false;
             currentController = null;
-            updateSendButton(); // Reset button to "Gönder"
-            showError('Bir hata oluştu. Lütfen tekrar deneyin.');
+            updateSendButton(); // Reset button to "Send"
+            showError('An error occurred. Please try again.');
         }
     }
     
@@ -717,10 +717,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to update button text and style
     function updateSendButton() {
         if (isGenerating) {
-            sendButton.textContent = "Durdur";
+            sendButton.textContent = "Stop";
             sendButton.classList.add("stop-button");
         } else {
-            sendButton.textContent = "Gönder";
+            sendButton.textContent = "Send";
             sendButton.classList.remove("stop-button");
         }
     }
@@ -732,7 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lightIndicator.className = `lights-indicator ${isOn ? 'lights-on' : 'lights-off'}`;
         
         // Set content based on light status
-        const statusText = isOn ? 'AÇIK' : 'KAPALI';
+        const statusText = isOn ? 'ON' : 'OFF';
         const icon = isOn ? '💡' : '⚪';
         
         lightIndicator.innerHTML = `

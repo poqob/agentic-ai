@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#6c63ff">
-    <title>Ollama Chat</title>
+    <title>Poqob Chat</title>
     <link rel="stylesheet" href="/static/style.css">
     <!-- Configuration must be loaded before main script -->
     <script src="/static/config.js"></script>
@@ -12,7 +12,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Ollama Chat</h1>
+            <h1>Poqob Chat</h1>
             <div class="model-selector">
                 <label for="model-select">Model:</label>
                 <select id="model-select">
@@ -21,60 +21,60 @@
                 </select>
             </div>
             <div class="tab-selector">
-                <button id="chat-tab" class="tab active">Sohbet</button>
-                <button id="image-tab" class="tab">Görsel Analiz</button>
+                <button id="chat-tab" class="tab active">Chat</button>
+                <button id="image-tab" class="tab">Image Analysis</button>
             </div>
         </div>
         
         <div id="chat-view">
             <div class="chat-container" id="chat-container">
                 <div class="welcome-message">
-                    <h2>Merhaba!</h2>
-                    <p>Yapay zeka modellerimizle sohbet etmek için aşağıya bir mesaj yazın.</p>
+                    <h2>Esenlikler!</h2>
+                    <p>Type a message below to chat with our AI models.</p>
                 </div>
                 <!-- Chat messages will be appended here -->
             </div>
             
             <div class="input-container">
-                <textarea id="user-input" placeholder="Bir şeyler sorun..." autofocus></textarea>
-                <button id="send-button">Gönder</button>
+                <textarea id="user-input" placeholder="Ask something..." autofocus></textarea>
+                <button id="send-button">Send</button>
             </div>
         </div>
         
         <div id="image-view" style="display:none;">
             <div class="image-container">
                 <div class="upload-section">
-                    <h2>Görsel Analizi</h2>
-                    <p>Bir görsel yükleyin ve yapay zeka modeli analiz etsin.</p>
+                    <h2>Image Analysis</h2>
+                    <p>Upload an image and let the AI model analyze it.</p>
                     
                     <form id="image-upload-form" enctype="multipart/form-data">
                         <div class="file-input-container">
                             <input type="file" id="image-input" name="image" accept="image/*">
-                            <label for="image-input" class="file-input-button">Görsel Seç</label>
-                            <span id="file-name">Dosya seçilmedi</span>
+                            <label for="image-input" class="file-input-button">Select Image</label>
+                            <span id="file-name">No file selected</span>
                         </div>
                         <div class="options-container">
                             <div class="explain-option">
                                 <input type="checkbox" id="explain-results" name="explain-results" checked>
-                                <label for="explain-results">Sonuçları dil modeliyle açıkla</label>
+                                <label for="explain-results">Explain results with language model</label>
                             </div>
                             <div class="stream-option">
                                 <input type="checkbox" id="stream-results" name="stream-results" checked>
-                                <label for="stream-results">Gerçek zamanlı akış kullan</label>
+                                <label for="stream-results">Use real-time streaming</label>
                             </div>
-                            <button type="submit" id="analyze-button">Analiz Et</button>
+                            <button type="submit" id="analyze-button">Analyze</button>
                         </div>
                     </form>
                 </div>
                 
                 <div class="result-section">
                     <div id="image-preview-container" style="display:none;">
-                        <h3>Yüklenen Görsel:</h3>
+                        <h3>Uploaded Picture:</h3>
                         <img id="image-preview" src="#" alt="Yüklenen görsel">
                     </div>
                     
                     <div id="prediction-result" style="display:none;">
-                        <h3>Analiz Sonucu:</h3>
+                        <h3>Analysis Result:</h3>
                         <div id="prediction-content"></div>
                     </div>
                 </div>
