@@ -13,7 +13,10 @@ const CONFIG = {
         REGRESSION_PREDICT_FROM_TEXT: '/api/regression/predict_from_text',
         IMAGE_PREDICT: '/api/image/predict',
         IMAGE_PREDICT_WITH_EXPLANATION: '/api/image/predict_with_explanation',
-        IMAGE_PREDICT_WITH_EXPLANATION_STREAM: '/api/image/predict_with_explanation/stream'
+        IMAGE_PREDICT_WITH_EXPLANATION_STREAM: '/api/image/predict_with_explanation/stream',
+        LIGHTS_STATUS: '/api/lights/status',
+        LIGHTS_CONTROL: '/api/lights/control',
+        LIGHTS_CONTROL_FROM_TEXT: '/api/lights/control_from_text'
     },
     
     // Default model

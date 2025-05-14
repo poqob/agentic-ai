@@ -229,6 +229,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to handle streaming image analysis
     async function handleStreamingImageAnalysis(formData, modelName) {
         try {
+            // Set generation state and update button
+            isGenerating = true;
+            updateSendButton(); // Update button to show "Durdur"
+            
+            // Create AbortController for image streaming
+            currentController = new AbortController();
+            const signal = currentController.signal;
+            
             // Prepare the DOM to show streaming results
             predictionContent.innerHTML = `
                 <div class="prediction-raw">
@@ -243,6 +251,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             
+            // Add stop button for image analysis
+            const stopButtonDiv = document.createElement('div');
+            stopButtonDiv.className = 'stop-generation-container';
+            stopButtonDiv.innerHTML = `
+                <button id="stop-image-generation" class="stop-button">Durdur</button>
+            `;
+            predictionContent.appendChild(stopButtonDiv);
+            
+            // Add event listener to stop button
+            const stopButton = document.getElementById('stop-image-generation');
+            stopButton.addEventListener('click', stopGenerating);
+            
             // Get references to the elements we'll update
             const predictionRawContent = document.getElementById('prediction-raw-content');
             const streamingExplanation = document.getElementById('streaming-explanation');
@@ -250,7 +270,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Start the streaming request
             const response = await fetch(window.CHAT_CONFIG.API.IMAGE_PREDICT_WITH_EXPLANATION_STREAM, {
                 method: 'POST',
-                body: formData
+                body: formData,
+                signal
             });
             
             if (!response.ok) {
@@ -263,12 +284,21 @@ document.addEventListener('DOMContentLoaded', () => {
             let explanationText = '';
             
             // Process the stream
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) {
-                    console.log('Stream complete');
-                    break;
-                }
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        console.log('Stream complete');
+                        // Cleanup when stream completes successfully
+                        isGenerating = false;
+                        currentController = null;
+                        updateSendButton();
+                        
+                        // Remove the stop button since generation is complete
+                        const stopButton = document.getElementById('stop-image-generation');
+                        if (stopButton) stopButton.remove();
+                        break;
+                    }
                 
                 // Decode the chunk and process each line
                 const chunk = decoder.decode(value, { stream: true });
@@ -327,20 +357,57 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
+            } catch (err) {
+                // This only catches errors in the stream processing loop
+                // The outer catch block will handle it appropriately
+                throw err;
+            }
         } catch (error) {
-            // Handle any errors
             console.error('Image prediction streaming error:', error);
-            predictionContent.innerHTML = `
-                <div class="error-container">
-                    <h4>Streaming Hatası:</h4>
-                    <p>${error.message}</p>
-                    <details>
-                        <summary>Teknik Detaylar</summary>
-                        <pre>${JSON.stringify(error, null, 2)}</pre>
-                    </details>
-                    <p class="error-help">Lütfen API servislerin çalıştığından emin olun.</p>
-                </div>
-            `;
+            
+            // Reset state
+            isGenerating = false;
+            currentController = null;
+            updateSendButton(); // Reset button to "Gönder"
+            
+            // Handle user-initiated abort separately from other errors
+            if (error.name === 'AbortError') {
+                // If we have explanation text, keep it and add a note
+                const streamingExplanation = document.getElementById('streaming-explanation');
+                if (streamingExplanation && explanationText.trim() !== '') {
+                    streamingExplanation.innerHTML = renderMarkdown(explanationText) + 
+                        '<div class="generation-stopped">(Açıklama üretimi durduruldu)</div>';
+                } else {
+                    // If no explanation text yet, show a simple message
+                    predictionContent.innerHTML += `
+                        <div class="generation-stopped" style="text-align: center; margin-top: 15px;">
+                            Görsel analiz açıklaması kullanıcı tarafından durduruldu.
+                        </div>
+                    `;
+                }
+                
+                // Remove the stop button since generation is already stopped
+                const stopButton = document.getElementById('stop-image-generation');
+                if (stopButton) stopButton.remove();
+            } else {
+                // For other errors, show the full error message
+                predictionContent.innerHTML = `
+                    <div class="error-container">
+                        <h4>Streaming Hatası:</h4>
+                        <p>${error.message}</p>
+                        <details>
+                            <summary>Teknik Detaylar</summary>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </details>
+                        <p class="error-help">Lütfen API servislerin çalıştığından emin olun.</p>
+                    </div>
+                `;
+            }
+        } finally {
+            // Make sure to always reset these states
+            isGenerating = false;
+            currentController = null;
+            updateSendButton();
         }
     }
     
@@ -367,14 +434,25 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error(error);
     });
     
-    // Send message when button is clicked
-    sendButton.addEventListener('click', sendMessage);
+    // Global controller for aborting fetch requests
+    let currentController = null;
+    
+    // Handle send/stop button click
+    sendButton.addEventListener('click', () => {
+        if (isGenerating) {
+            stopGenerating();
+        } else {
+            sendMessage();
+        }
+    });
     
     // Send message when Enter is pressed (Shift+Enter for new line)
     userInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            sendMessage();
+            if (!isGenerating) {
+                sendMessage();
+            }
         }
     });
     
@@ -408,13 +486,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             isGenerating = true;
+            updateSendButton(); // Update button to show "Durdur"
             
             // Get selected model
             const modelName = modelSelect.value;
             
             // Create AbortController to cancel fetch if needed
-            const controller = new AbortController();
-            const signal = controller.signal;
+            currentController = new AbortController();
+            const signal = currentController.signal;
             
             // Attempt to fetch streaming response
             fetch(window.CHAT_CONFIG.API.CHAT_STREAM, {
@@ -447,6 +526,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (result.done) {
                         console.log('Stream complete');
                         isGenerating = false;
+                        currentController = null;
+                        updateSendButton(); // Reset button to "Gönder"
                         
                         // Add assistant message to messages array
                         messages.push({
@@ -473,6 +554,18 @@ document.addEventListener('DOMContentLoaded', () => {
                                     // Chat API format
                                     const content = data.message.content;
                                     fullResponse += content;
+                                    
+                                    // Check if this is a lights control response
+                                    if (data.lights_action) {
+                                        const lightsAction = data.lights_action;
+                                        const room = lightsAction.room;
+                                        const status = lightsAction.status;
+                                        
+                                        // Show lights control visual indicator
+                                        setTimeout(() => {
+                                            showLightsActionIndicator(aiMessageDiv, room, status === 'on');
+                                        }, 100);
+                                    }
                                 } else if (data.response) {
                                     // Generate API format
                                     fullResponse += data.response;
@@ -498,9 +591,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch(error => {
                 console.error('Fetch error:', error);
                 isGenerating = false;
+                currentController = null;
+                updateSendButton(); // Reset button to "Gönder"
                 
-                // Show error in the message area
-                aiMessageDiv.textContent = 'Bir hata oluştu: ' + error.message;
+                // Show error in the message area if it's not an abort error
+                if (error.name !== 'AbortError') {
+                    aiMessageDiv.textContent = 'Bir hata oluştu: ' + error.message;
+                } else {
+                    // User initiated cancel - keep the partial output
+                    if (fullResponse.trim() === '') {
+                        aiMessageDiv.textContent = 'Yanıt üretimi durduruldu.';
+                    } else {
+                        // Append a note that generation was stopped
+                        aiMessageDiv.innerHTML = renderMarkdown(fullResponse) + 
+                            '<div class="generation-stopped">(Yanıt üretimi durduruldu)</div>';
+                        
+                        // Add the partial response to messages array
+                        messages.push({
+                            role: 'assistant',
+                            content: fullResponse
+                        });
+                    }
+                }
                 
                 // Log browser console for debugging
                 console.error('Streaming error:', error);
@@ -509,6 +621,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error:', error);
             isGenerating = false;
+            currentController = null;
+            updateSendButton(); // Reset button to "Gönder"
             showError('Bir hata oluştu. Lütfen tekrar deneyin.');
         }
     }
@@ -587,5 +701,51 @@ document.addEventListener('DOMContentLoaded', () => {
         text = text.replace(/\n\n/g, '<br><br>');
         
         return text;
+    }
+
+    // Function to stop generating
+    function stopGenerating() {
+        if (currentController) {
+            currentController.abort();
+            currentController = null;
+            isGenerating = false;
+            updateSendButton();
+            console.log("Generation aborted by user");
+        }
+    }
+    
+    // Function to update button text and style
+    function updateSendButton() {
+        if (isGenerating) {
+            sendButton.textContent = "Durdur";
+            sendButton.classList.add("stop-button");
+        } else {
+            sendButton.textContent = "Gönder";
+            sendButton.classList.remove("stop-button");
+        }
+    }
+
+    // Function to display a visual indication of light control
+    function showLightsActionIndicator(messageDiv, room, isOn) {
+        // Create a light indicator element
+        const lightIndicator = document.createElement('div');
+        lightIndicator.className = `lights-indicator ${isOn ? 'lights-on' : 'lights-off'}`;
+        
+        // Set content based on light status
+        const statusText = isOn ? 'AÇIK' : 'KAPALI';
+        const icon = isOn ? '💡' : '⚪';
+        
+        lightIndicator.innerHTML = `
+            <div class="lights-room">${room.toUpperCase()}</div>
+            <div class="lights-status">${icon} ${statusText}</div>
+        `;
+        
+        // Append to message div
+        messageDiv.appendChild(lightIndicator);
+        
+        // Add animation class after a brief delay (for transition effect)
+        setTimeout(() => {
+            lightIndicator.classList.add('show');
+        }, 100);
     }
 });

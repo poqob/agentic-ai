@@ -17,7 +17,7 @@ A Flask application that provides a web interface for Ollama LLM models with add
 ## Feature Highlights
 
 ### Real-time Streaming Responses
-Both chat and image analysis support real-time streaming responses, providing immediate feedback to users while the model is generating content.
+Both chat and image analysis support real-time streaming responses, providing immediate feedback to users while the model is generating content. Users can stop generation at any time with the "Durdur" (Stop) button, and the partial generated content will be preserved.
 
 ### LLM-enhanced ML Model Interpretation
 The application combines traditional ML models with LLMs to provide natural language explanations of model outputs:
@@ -51,6 +51,14 @@ The application acts as an orchestration layer between multiple AI services:
 - `POST /api/image/predict`: Process image with classification model
 - `POST /api/image/predict_with_explanation`: Process image and explain with LLM
 - `POST /api/image/predict_with_explanation/stream`: Process image and stream LLM explanation in real-time
+
+### Home Lights API Endpoints
+
+- `GET /api/lights/status`: Check if home lights control service is running
+- `POST /api/lights/control`: Control lights in a specified room
+- `POST /api/lights/control_from_text`: Control lights using natural language commands
+
+> Note: The LLM chat interface automatically detects and processes light control commands.
 
 > Note: All API endpoints also work without the `/api/` prefix for backward compatibility.
 
@@ -105,6 +113,34 @@ fetch('/api/image/predict_with_explanation/stream', {
     // Process the stream chunks as they arrive...
 })
 ```
+
+### Home Lights Control
+
+```bash
+# Direct lights control
+curl -X POST http://localhost:5000/api/lights/control \
+  -H "Content-Type: application/json" \
+  -d '{
+    "room": "salon",
+    "lights": true
+  }'
+
+# Natural language lights control
+curl -X POST http://localhost:5000/api/lights/control_from_text \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Salonun ışıklarını aç",
+    "model": "mistral:7b"
+  }'
+
+# Check lights service status
+curl http://localhost:5000/api/lights/status
+```
+
+You can also control lights through the chat interface by sending messages like:
+- "Salonun ışıklarını aç"
+- "Mutfaktaki ışıkları kapat"
+- "Yatak odasının lambalarını söndür"
 
 ## Setup
 

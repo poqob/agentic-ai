@@ -15,6 +15,10 @@ REGRESSION_PREDICT_ENDPOINT = "/predict"
 IMAGE_API_HOST = os.environ.get("IMAGE_API_HOST", "http://localhost:5003")
 IMAGE_PREDICT_ENDPOINT = "/predict"
 
+# Home Lights API Configuration
+LIGHTS_API_HOST = os.environ.get("LIGHTS_API_HOST", "http://localhost:5004")
+LIGHTS_API_ENDPOINT = "/api/lights"
+
 # Server Configuration
 HOST = '0.0.0.0'
 PORT = 5000
