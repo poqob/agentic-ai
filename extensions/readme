@@ -1,0 +1,5 @@
+### Extensions Directory
+
+Download your extensions in this directory with predefined `get-extensions.sh` script or manually.
+The `run-app-with-extensions.sh` script will automatically scan this folder to execute extensions.  
+Ensure each extension includes a runnable `service.py` file!

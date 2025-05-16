@@ -79,23 +79,52 @@ def chat():
         messages = data.get('messages', [])
         print(f"Received messages: {messages}")
         
-        # Check if this is a lights control command
+        # Check if this is a lights-related message
         if len(messages) > 0 and messages[-1].get('role') == 'user':
             user_message = messages[-1].get('content', '').lower()
             
-            # Check if the message is related to lights
-            light_keywords = ['ışık', 'lamba', 'aydınlat', 'aç', 'kapat', 'söndür', 'yak', 'turn on', 'turn off', 'lights', 'switch on', 'switch off', 'light', 'lamp']
-            room_keywords = ['salon', 'sitting', 'oturulan', 'mutfak', 'yatak', 'banyo', 'tuvalet', 'toilet', 'wc', 'living', 'kitchen', 'bedroom', 'bathroom']
+            # Keywords for light control
+            light_control_keywords = ['aç', 'kapat', 'söndür', 'yak', 'turn on', 'turn off', 'switch on', 'switch off']
             
-            is_light_command = any(keyword in user_message for keyword in light_keywords) and \
+            # Keywords for light status query
+            status_keywords = ['status', 'durum', 'state', 'which', 'hangi', 'list', 'liste', 'show', 'göster', 'rooms', 'odalar', 'have', 'var']
+            status_phrase_patterns = ['is the', 'are the', 'tell me about', 'what is', 'bana söyle', 'durum ne', 'ışıkları göster', 'show me']
+            
+            # Check if the message is related to lights
+            light_keywords = ['ışık', 'lamba', 'aydınlat', 'lights', 'light', 'lamp']
+            room_keywords = ['salon', 'sitting', 'oturulan', 'mutfak', 'yatak', 'banyo', 'tuvalet', 'toilet', 'wc', 'living', 'kitchen', 'bedroom', 'bathroom', 'room', 'oda']
+            
+            # Determine if this is a light control command or a status query
+            is_light_control = any(keyword in user_message for keyword in light_control_keywords) and \
+                              any(keyword in user_message for keyword in light_keywords) and \
                               any(keyword in user_message for keyword in room_keywords)
             
-            print(is_light_command)
-            if is_light_command:
+            # More strict detection for status queries to avoid false positives
+            is_status_query = False
+            
+            # Check for direct status query indicators
+            if any(keyword in user_message for keyword in status_keywords) and \
+               (any(keyword in user_message for keyword in light_keywords) or any(keyword in user_message for keyword in room_keywords)):
+                is_status_query = True
+                
+            # Check for phrase patterns that indicate a status query
+            if any(pattern in user_message for pattern in status_phrase_patterns) and \
+               (any(keyword in user_message for keyword in light_keywords) or any(keyword in user_message for keyword in room_keywords)):
+                is_status_query = True
+                
+            # If it looks like a light-related query but not a control command, treat as status query
+            if any(keyword in user_message for keyword in light_keywords) and \
+               any(keyword in user_message for keyword in room_keywords) and \
+               not is_light_control and \
+               not any(keyword in user_message for keyword in light_control_keywords):
+                is_status_query = True
+            
+            # Process light control commands  
+            if is_light_control:
                 from client import process_lights_command_from_text
                 
                 # Process the command through our lights control function
-                print(user_message)
+                print(f"[DEBUG] Processing light control command: {user_message}")
                 lights_result = process_lights_command_from_text(user_message, model)
                 
                 if lights_result["success"]:
@@ -124,15 +153,34 @@ def chat():
                             "status": lights_result.get("status")
                         }
                     })
+            
+            # Process light status queries
+            elif is_status_query:
+                from client import process_lights_status_query_from_text
+                
+                # Process the status query
+                print(f"[DEBUG] Processing light status query: {user_message}")
+                status_result = process_lights_status_query_from_text(user_message, model)
+                
+                if status_result["success"]:
+                    # Return the status response
+                    return jsonify({
+                        "message": {
+                            "role": "assistant",
+                            "content": status_result["message"]
+                        },
+                        "lights_states": status_result["states"]
+                    })
                 else:
-                    # If there was an error with the lights control, inform the user
-                    error_message = lights_result.get("error", "Işıklar kontrol edilemedi, bir hata oluştu.")
+                    # If there was an error with the status query, inform the user
+                    error_message = status_result.get("error", "Could not retrieve light status information.")
                     return jsonify({
                         "message": {
                             "role": "assistant", 
-                            "content": f"Üzgünüm, ışıkları kontrol ederken bir sorun oluştu: {error_message}"
+                            "content": f"Sorry, I couldn't get the light status information: {error_message}"
                         }
                     })
+                
         
         # If not a lights command, proceed with regular chat
         response = requests.post(

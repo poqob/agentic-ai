@@ -613,3 +613,146 @@ def process_lights_command_from_text(user_message, model="mistral:7b"):
         room, turn_on = extract_from_keywords(user_message)
         print(f"[INFO] Using fallback extraction: room='{room}', action={turn_on}")
         return control_home_lights(room, turn_on)
+
+def get_home_lights_states():
+    """
+    Get the current state of all room lights
+    
+    Returns:
+        Dictionary with the states of all room lights
+    """
+    from config import LIGHTS_API_HOST
+    
+    try:
+        import requests
+        
+        # Make a GET request to the API
+        api_url = f"{LIGHTS_API_HOST}/api/get_states"
+        
+        response = requests.get(api_url, timeout=2.0)
+        
+        if response.status_code == 200:
+            return {
+                "success": True,
+                "states": response.json()
+            }
+        else:
+            return {
+                "success": False,
+                "error": f"API Error: {response.status_code}",
+                "details": response.text
+            }
+            
+    except requests.exceptions.Timeout:
+        return {
+            "success": False,
+            "error": "API request timed out"
+        }
+    except requests.exceptions.ConnectionError:
+        return {
+            "success": False,
+            "error": "Could not connect to API. Light control service may not be running."
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": f"Unexpected error: {str(e)}",
+            "traceback": traceback.format_exc()
+        }
+
+def process_lights_status_query_from_text(user_message, model="mistral:7b"):
+    """
+    Process a natural language query about home light status
+    
+    This function:
+    1. Checks if the query is about listing rooms or getting light states
+    2. Gets the current light states from the API
+    3. Uses an LLM to format a natural language response
+    
+    Args:
+        user_message: String with user's natural language query
+        model: LLM model to use for response generation
+        
+    Returns:
+        Dictionary with the query result and formatted response
+    """
+    import json
+    
+    # Get current light states
+    states_result = get_home_lights_states()
+    
+    if not states_result["success"]:
+        return {
+            "success": False,
+            "error": states_result["error"]
+        }
+        
+    room_states = states_result["states"]
+    
+    # Define system prompt for LLM
+    system_prompt = f"""
+    You are a language model assistant used for home automation.
+    
+    The user will ask questions about the status of home lights or which rooms are available.
+    You should provide a helpful response based on the current state of the lights.
+    
+    Here is the current status of all rooms:
+    {json.dumps(room_states, indent=2)}
+    
+    When responding to queries:
+    1. If the user asks about specific room(s), tell them whether the lights are on or off in those rooms.
+    2. If the user asks to list all rooms, provide the names of all available rooms.
+    3. If the user asks about the status of all rooms, list each room and whether its lights are on or off.
+    
+    Your responses should be conversational and helpful. Respond in the same language the user used for their query (English or Turkish).
+    """
+    
+    try:
+        import requests
+        from config import OLLAMA_API_HOST
+        
+        # Ask LLM to generate a response
+        response = requests.post(
+            f"{OLLAMA_API_HOST}/api/chat",
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ]
+            }
+        )
+        
+        if response.status_code != 200:
+            return {
+                "success": False,
+                "error": f"LLM API Error: {response.status_code}"
+            }
+            
+        # Parse the response
+        response_json = response.json()
+        
+        if "message" in response_json and "content" in response_json["message"]:
+            content = response_json["message"]["content"]
+        elif "response" in response_json:
+            content = response_json["response"]
+        else:
+            return {
+                "success": False,
+                "error": "Unexpected LLM API response format"
+            }
+            
+        return {
+            "success": True,
+            "message": content,
+            "states": room_states
+        }
+        
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": f"Error processing query: {str(e)}",
+            "traceback": traceback.format_exc()
+        }
