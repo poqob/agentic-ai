@@ -1,0 +1,26 @@
+.dropdown-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+}
+
+#model-menu {
+    display: none;
+    position: absolute;
+    left: 0;
+    bottom: 44px;
+    background: #faf9f8;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    min-width: 170px;
+    z-index: 9999;
+    padding: 4px 0;
+    flex-direction: column;
+    animation: fadeInMenu 0.18s;
+}
+
+#model-menu.show {
+    display: flex;
+}

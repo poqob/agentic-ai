@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const chatContainer = document.getElementById('chat-container');
     const userInput = document.getElementById('user-input');
-    const modelSelect = document.getElementById('model-select');
     const chatView = document.getElementById('chat-view');
     const imageView = document.getElementById('image-view');
     const imageUploadForm = document.getElementById('image-upload-form');
@@ -101,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Add model selection for explanation
         if (explainResults) {
-            formData.append('model', modelSelect.value);
+            formData.append('model', getCurrentModel());
         }
 
         // Show loading state
@@ -110,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // If streaming is enabled and explanation is requested
         if (useStreaming && explainResults) {
-            handleStreamingImageAnalysis(formData, modelSelect.value);
+            handleStreamingImageAnalysis(formData, getCurrentModel());
             return;
         }
 
@@ -244,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="error-help">The error is likely coming from the Ollama API service. Please check:</p>
                     <ul class="error-tips">
                         <li>Is the Ollama service running? (Port 11434)</li>
-                        <li>Is the requested model (${modelSelect.value}) installed?</li>
+                        <li>Is the requested model (${getCurrentModel()}) installed?</li>
                         <li>Make sure the image file is not too large.</li>
                     </ul>
                 </div>
@@ -431,29 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Load available models from API
-    fetchModels().then(models => {
-        const select = document.getElementById('model-select');
-        // Clear existing options
-        select.innerHTML = '';
-
-        models.forEach(model => {
-            const option = document.createElement('option');
-            option.value = model.name;
-            option.textContent = model.name;
-
-            // Default select mistral:7b if available
-            if (model.name === 'mistral:7b') {
-                option.selected = true;
-            }
-
-            select.appendChild(option);
-        });
-    }).catch(error => {
-        showError('Could not load model list. Is the API running?');
-        console.error(error);
-    });
-
     // Update the send button appearance based on generation state
     function updateSendButton() {
         if (isGenerating) {
@@ -560,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Get selected model
-            const modelName = modelSelect.value;
+            const modelName = getCurrentModel();
 
             // Create AbortController to cancel fetch if needed
             currentController = new AbortController();
@@ -806,6 +782,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Plus button menu toggle (dropdown gibi açılır menü için kesin çözüm)
     plusButton.addEventListener('click', (e) => {
         e.stopPropagation();
+
+        // Close model menu if it's open
+        const modelMenu = document.getElementById('model-menu');
+        if (modelMenu && modelMenu.classList.contains('show')) {
+            modelMenu.classList.remove('show');
+        }
+
         plusMenu.classList.toggle('show');
     });
     // Menü dışına tıklanınca menüyü kapat

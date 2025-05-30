@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/static/style.css">
     <!-- Configuration must be loaded before main script -->
     <script src="/static/config.js"></script>
+    <script src="/static/model-selection.js"></script>
 </head>
 
 <body>
@@ -20,13 +21,6 @@
                     style="height: 40px; vertical-align: middle; margin-right: 10px; filter: invert(1);">
                 Poqob Chat
             </h1>
-            <div class="model-selector">
-                <label for="model-select">Model:</label>
-                <select id="model-select">
-                    <option value="llama2">Llama2</option>
-                    <option value="mistral:7b" selected>Mistral 7B</option>
-                </select>
-            </div>
             <div class="tab-selector">
                 <button id="chat-tab" class="tab active">New Chat</button>
                 <!-- <button id="image-tab" class="tab">Image Analysis</button> -->
@@ -44,6 +38,12 @@
 
             <div class="input-container">
                 <textarea id="user-input" placeholder="Ask something..." autofocus></textarea>
+                <div class="dropdown-wrapper">
+                    <button id="model-button" class="model-button" title="Select Model">M</button>
+                    <div id="model-menu" class="plus-menu">
+                        <!-- Models will be populated dynamically -->
+                    </div>
+                </div>
                 <div class="dropdown-wrapper">
                     <button id="plus-button" class="plus-button" title="More options">+</button>
                     <div id="plus-menu" class="plus-menu">
