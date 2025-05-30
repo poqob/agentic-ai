@@ -1,10 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const chatContainer = document.getElementById('chat-container');
     const userInput = document.getElementById('user-input');
-    const sendButton = document.getElementById('send-button');
     const modelSelect = document.getElementById('model-select');
-    const chatTab = document.getElementById('chat-tab');
-    const imageTab = document.getElementById('image-tab');
     const chatView = document.getElementById('chat-view');
     const imageView = document.getElementById('image-view');
     const imageUploadForm = document.getElementById('image-upload-form');
@@ -14,31 +11,60 @@ document.addEventListener('DOMContentLoaded', () => {
     const imagePreview = document.getElementById('image-preview');
     const predictionResult = document.getElementById('prediction-result');
     const predictionContent = document.getElementById('prediction-content');
-    
+    const uploadPdf = document.getElementById('upload-pdf');
+    const uploadPhoto = document.getElementById('upload-photo');
+
     let messages = [];
     let isGenerating = false;
-    
-    // Tab switching
-    chatTab.addEventListener('click', () => {
-        chatTab.classList.add('active');
-        imageTab.classList.remove('active');
-        chatView.style.display = 'block';
-        imageView.style.display = 'none';
-    });
-    
-    imageTab.addEventListener('click', () => {
-        imageTab.classList.add('active');
-        chatTab.classList.remove('active');
-        imageView.style.display = 'block';
-        chatView.style.display = 'none';
-    });
-    
+
+    // Butonları tekrar seç (özellikle input-container içindeki sıralama değiştiyse)
+    const sendButton = document.getElementById('send-button');
+    const plusButton = document.getElementById('plus-button');
+    const plusMenu = document.getElementById('plus-menu');
+    const chatTab = document.getElementById('chat-tab');
+    const imageTab = document.getElementById('image-tab');
+
+    // Tab switching (event listener'ları tekrar ata, önce var olanları kaldır)
+    if (chatTab) {
+        chatTab.replaceWith(chatTab.cloneNode(true));
+        const newChatTab = document.getElementById('chat-tab');
+        newChatTab.addEventListener('click', () => {
+            newChatTab.classList.add('active');
+            if (imageTab) imageTab.classList.remove('active');
+            chatView.style.display = 'block';
+            imageView.style.display = 'none';
+
+            // Clear chat history when "New Chat" is clicked
+            chatContainer.innerHTML = '';
+            messages = [];
+
+            // Add welcome message
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'welcome-message';
+            welcomeDiv.innerHTML = `
+                <h2>Esenlikler!</h2>
+                <p>Type a message below to chat with our AI models.</p>
+            `;
+            chatContainer.appendChild(welcomeDiv);
+        });
+    }
+    if (imageTab) {
+        imageTab.replaceWith(imageTab.cloneNode(true));
+        const newImageTab = document.getElementById('image-tab');
+        newImageTab.addEventListener('click', () => {
+            newImageTab.classList.add('active');
+            if (chatTab) chatTab.classList.remove('active');
+            imageView.style.display = 'block';
+            chatView.style.display = 'none';
+        });
+    }
+
     // Handle file selection
     imageInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
             fileNameSpan.textContent = file.name;
-            
+
             // Show image preview
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -46,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 imagePreviewContainer.style.display = 'block';
             };
             reader.readAsDataURL(file);
-            
+
             // Hide previous results
             predictionResult.style.display = 'none';
         } else {
@@ -54,62 +80,62 @@ document.addEventListener('DOMContentLoaded', () => {
             imagePreviewContainer.style.display = 'none';
         }
     });
-    
+
     // Handle image upload and analysis
     imageUploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         const file = imageInput.files[0];
         if (!file) {
             alert('Please select an image');
             return;
         }
-        
+
         // Prepare form data
         const formData = new FormData();
         formData.append('image', file);
-        
+
         // Check if explanation is requested and whether to use streaming
         const explainResults = document.getElementById('explain-results').checked;
         const useStreaming = document.getElementById('stream-results').checked;
-        
+
         // Add model selection for explanation
         if (explainResults) {
             formData.append('model', modelSelect.value);
         }
-        
+
         // Show loading state
         predictionContent.innerHTML = 'Analyzing image...';
         predictionResult.style.display = 'block';
-        
+
         // If streaming is enabled and explanation is requested
         if (useStreaming && explainResults) {
             handleStreamingImageAnalysis(formData, modelSelect.value);
             return;
         }
-        
+
         // For non-streaming requests
         try {
             // Send image for prediction (with or without explanation)
-            const apiEndpoint = explainResults 
-                ? window.CHAT_CONFIG.API.IMAGE_PREDICT_WITH_EXPLANATION 
+            const apiEndpoint = explainResults
+                ? window.CHAT_CONFIG.API.IMAGE_PREDICT_WITH_EXPLANATION
                 : window.CHAT_CONFIG.API.IMAGE_PREDICT;
-                
+
             const response = await fetch(apiEndpoint, {
                 method: 'POST',
                 body: formData
             });
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error: ${response.status}`);
             }
-            
+
             const result = await response.json();
-            
+
             if (result.success && result.prediction) {
                 // Format and display prediction
                 let formattedResult = '';
-                
+
                 if (typeof result.prediction === 'object') {
                     // If it's a complex object
                     formattedResult = JSON.stringify(result.prediction, null, 2);
@@ -117,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // If it's a simple string
                     formattedResult = result.prediction;
                 }
-                
+
                 // Check if we have an explanation from the language model
                 if (result.explanation) {
                     predictionContent.innerHTML = `
@@ -133,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     predictionContent.innerHTML = `<pre>${formattedResult}</pre>`;
                 }
-                
+
                 // Debug information for errors
                 if (result.error_details) {
                     console.log("API error details:", result.error_details);
@@ -149,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Enhanced error display with additional details if available
                 let errorMessage = result.error || 'Unknown error occurred';
                 let errorDetails = '';
-                
+
                 // Check if we have traceback information
                 if (result.traceback) {
                     console.error("API Error Traceback:", result.traceback);
@@ -160,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </details>
                     `;
                 }
-                
+
                 predictionContent.innerHTML = `
                     <div class="error-container">
                         <h4>Error Occurred:</h4>
@@ -177,15 +203,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
             }
-            
+
         } catch (error) {
             console.error('Image prediction error:', error);
-            
+
             // Enhanced error display with request debugging info
-            const apiEndpoint = document.getElementById('explain-results').checked 
-                ? window.CHAT_CONFIG.API.IMAGE_PREDICT_WITH_EXPLANATION 
+            const apiEndpoint = document.getElementById('explain-results').checked
+                ? window.CHAT_CONFIG.API.IMAGE_PREDICT_WITH_EXPLANATION
                 : window.CHAT_CONFIG.API.IMAGE_PREDICT;
-                
+
             predictionContent.innerHTML = `
                 <div class="error-container">
                     <h4>Error Occurred:</h4>
@@ -225,18 +251,18 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
     });
-    
+
     // Function to handle streaming image analysis
     async function handleStreamingImageAnalysis(formData, modelName) {
         try {
             // Set generation state and update button
             isGenerating = true;
             updateSendButton(); // Update button to show "Stop"
-            
+
             // Create AbortController for image streaming
             currentController = new AbortController();
             const signal = currentController.signal;
-            
+
             // Prepare the DOM to show streaming results
             predictionContent.innerHTML = `
                 <div class="prediction-raw">
@@ -250,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
-            
+
             // Add stop button for image analysis
             const stopButtonDiv = document.createElement('div');
             stopButtonDiv.className = 'stop-generation-container';
@@ -258,64 +284,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button id="stop-image-generation" class="stop-button">Stop</button>
             `;
             predictionContent.appendChild(stopButtonDiv);
-            
+
             // Add event listener to stop button
             const stopButton = document.getElementById('stop-image-generation');
             stopButton.addEventListener('click', stopGenerating);
-            
+
             // Get references to the elements we'll update
             const predictionRawContent = document.getElementById('prediction-raw-content');
             const streamingExplanation = document.getElementById('streaming-explanation');
-            
+
             // Start the streaming request
             const response = await fetch(window.CHAT_CONFIG.API.IMAGE_PREDICT_WITH_EXPLANATION_STREAM, {
                 method: 'POST',
                 body: formData,
                 signal
             });
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error: ${response.status}`);
             }
-            
+
             // Get a reader to process the stream
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let explanationText = '';
-            
+
             // Process the stream
-            try {
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) {
-                        console.log('Stream complete');
-                        // Cleanup when stream completes successfully
-                        isGenerating = false;
-                        currentController = null;
-                        updateSendButton();
-                        
-                        // Remove the stop button since generation is complete
-                        const stopButton = document.getElementById('stop-image-generation');
-                        if (stopButton) stopButton.remove();
-                        break;
-                    }
-                
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    console.log('Stream complete');
+                    // Cleanup when stream completes successfully
+                    isGenerating = false;
+                    currentController = null;
+                    updateSendButton();
+
+                    // Remove the stop button since generation is complete
+                    const stopButton = document.getElementById('stop-image-generation');
+                    if (stopButton) stopButton.remove();
+                    break;
+                }
+
                 // Decode the chunk and process each line
                 const chunk = decoder.decode(value, { stream: true });
                 const lines = chunk.split('\n\n');
-                
+
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
                         try {
                             // Parse the JSON data
                             const eventData = JSON.parse(line.substring(6));
-                            
+
                             // Handle different event types
                             if (eventData.type === 'prediction') {
                                 // Display the prediction results
                                 const prediction = eventData.data;
                                 predictionRawContent.textContent = JSON.stringify(prediction, null, 2);
-                                
+
                                 // Update the UI to show we're waiting for explanation
                                 streamingExplanation.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
                             }
@@ -323,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // Handle Ollama response format
                                 try {
                                     const llmData = JSON.parse(eventData.content);
-                                    
+
                                     // Extract text from different Ollama response formats
                                     let contentToAdd = '';
                                     if (llmData.message && llmData.message.content) {
@@ -333,12 +358,12 @@ document.addEventListener('DOMContentLoaded', () => {
                                         // Generate response format
                                         contentToAdd = llmData.response;
                                     }
-                                    
+
                                     if (contentToAdd) {
                                         explanationText += contentToAdd;
                                         // Update UI with the accumulated explanation
                                         streamingExplanation.innerHTML = renderMarkdown(explanationText);
-                                        
+
                                         // Scroll to bottom if needed
                                         streamingExplanation.scrollTop = streamingExplanation.scrollHeight;
                                     }
@@ -357,26 +382,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
-            } catch (err) {
-                // This only catches errors in the stream processing loop
-                // The outer catch block will handle it appropriately
-                throw err;
-            }
         } catch (error) {
             console.error('Image prediction streaming error:', error);
-            
+
             // Reset state
             isGenerating = false;
             currentController = null;
             updateSendButton(); // Reset button to "Send"
-            
+
             // Handle user-initiated abort separately from other errors
             if (error.name === 'AbortError') {
                 // If we have explanation text, keep it and add a note
                 const streamingExplanation = document.getElementById('streaming-explanation');
                 if (streamingExplanation && explanationText.trim() !== '') {
-                    streamingExplanation.innerHTML = renderMarkdown(explanationText) + 
-                        '<div class="generation-stopped">(Explanation generation stopped)</div>';
+                    streamingExplanation.innerHTML = renderMarkdown(explanationText) +
+                        '<div class="generation-stopped" style="color: #e53935; margin-top: 8px; font-style: italic; border-top: 1px solid #eee; padding-top: 8px;">Image analysis generation stopped by user</div>';
                 } else {
                     // If no explanation text yet, show a simple message
                     predictionContent.innerHTML += `
@@ -385,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     `;
                 }
-                
+
                 // Remove the stop button since generation is already stopped
                 const stopButton = document.getElementById('stop-image-generation');
                 if (stopButton) stopButton.remove();
@@ -410,34 +430,47 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSendButton();
         }
     }
-    
+
     // Load available models from API
     fetchModels().then(models => {
         const select = document.getElementById('model-select');
         // Clear existing options
         select.innerHTML = '';
-        
+
         models.forEach(model => {
             const option = document.createElement('option');
             option.value = model.name;
             option.textContent = model.name;
-            
+
             // Default select mistral:7b if available
             if (model.name === 'mistral:7b') {
                 option.selected = true;
             }
-            
+
             select.appendChild(option);
         });
     }).catch(error => {
         showError('Could not load model list. Is the API running?');
         console.error(error);
     });
-    
-    // Global controller for aborting fetch requests
-    let currentController = null;
-    
-    // Handle send/stop button click
+
+    // Update the send button appearance based on generation state
+    function updateSendButton() {
+        if (isGenerating) {
+            sendButton.textContent = "Stop";
+            sendButton.classList.add("stop-button");
+            sendButton.title = "Stop generation";
+        } else {
+            sendButton.textContent = "Send";
+            sendButton.classList.remove("stop-button");
+            sendButton.title = "Send message";
+        }
+    }
+
+    // Initial button state
+    updateSendButton();
+
+    // Set up event listener for send button to toggle between send and stop functionality
     sendButton.addEventListener('click', () => {
         if (isGenerating) {
             stopGenerating();
@@ -445,7 +478,25 @@ document.addEventListener('DOMContentLoaded', () => {
             sendMessage();
         }
     });
-    
+
+    // Function to abort ongoing generation
+    let currentController = null;
+    function stopGenerating() {
+        if (currentController) {
+            // Add a small visual feedback on click
+            sendButton.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                sendButton.style.transform = '';
+            }, 150);
+
+            currentController.abort();
+            currentController = null;
+            isGenerating = false;
+            updateSendButton();
+            console.log("Generation aborted by user");
+        }
+    }
+
     // Send message when Enter is pressed (Shift+Enter for new line)
     userInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -455,46 +506,66 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-    
+
     async function sendMessage() {
         if (isGenerating) return;
-        
+
         const userMessage = userInput.value.trim();
         if (userMessage === '') return;
-        
+
         // Add user message to chat
         addMessage('user', userMessage);
-        
+
         // Clear input
         userInput.value = '';
-        
+
         // Add to messages array
         messages.push({
             role: 'user',
             content: userMessage
         });
-        
+
         // Show typing indicator
         const aiMessageDiv = addMessage('ai', '');
         const typingIndicator = document.createElement('div');
         typingIndicator.className = 'typing-indicator';
         typingIndicator.innerHTML = '<span></span><span></span><span></span>';
         aiMessageDiv.appendChild(typingIndicator);
-        
+
         // Scroll to bottom
         chatContainer.scrollTop = chatContainer.scrollHeight;
-        
+
         try {
+            // Set generation state and update button to "Stop"
             isGenerating = true;
-            updateSendButton(); // Update button to show "Stop"
-            
+            updateSendButton();
+
+            // Show tip message about stopping generation (first time only)
+            if (!localStorage.getItem('stopTipShown')) {
+                const tipMessage = document.createElement('div');
+                tipMessage.className = 'tip-message';
+                tipMessage.innerHTML = 'Tip: You can click the <span class="button-highlight">Stop</span> button at any time to stop the AI from generating more text.';
+                chatContainer.appendChild(tipMessage);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                // Only show this tip once
+                localStorage.setItem('stopTipShown', 'true');
+
+                // Remove the tip after 10 seconds
+                setTimeout(() => {
+                    if (tipMessage.parentNode) {
+                        tipMessage.parentNode.removeChild(tipMessage);
+                    }
+                }, 10000);
+            }
+
             // Get selected model
             const modelName = modelSelect.value;
-            
+
             // Create AbortController to cancel fetch if needed
             currentController = new AbortController();
             const signal = currentController.signal;
-            
+
             // Attempt to fetch streaming response
             fetch(window.CHAT_CONFIG.API.CHAT_STREAM, {
                 method: 'POST',
@@ -510,17 +581,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-                
+
                 // Get a reader to process the stream
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let fullResponse = '';
-                
+
                 // Remove typing indicator
                 if (typingIndicator.parentNode) {
                     typingIndicator.parentNode.removeChild(typingIndicator);
                 }
-                
+
                 // Function to process stream chunks
                 function processText(result) {
                     if (result.done) {
@@ -528,7 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         isGenerating = false;
                         currentController = null;
                         updateSendButton(); // Reset button to "Send"
-                        
+
                         // Add assistant message to messages array
                         messages.push({
                             role: 'assistant',
@@ -536,31 +607,31 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         return;
                     }
-                    
+
                     // Decode the chunk
                     const chunk = decoder.decode(result.value, { stream: true });
-                    
+
                     // Handle Server-Sent Events format
                     const lines = chunk.split('\n');
-                    
+
                     lines.forEach(line => {
                         if (line.startsWith('data: ')) {
                             try {
                                 // Parse the JSON data
                                 const data = JSON.parse(line.substring(6));
-                                
+
                                 // Extract the response content
                                 if (data.message && data.message.content) {
                                     // Chat API format
                                     const content = data.message.content;
                                     fullResponse += content;
-                                    
+
                                     // Check if this is a lights control response
                                     if (data.lights_action) {
                                         const lightsAction = data.lights_action;
                                         const room = lightsAction.room;
                                         const status = lightsAction.status;
-                                        
+
                                         // Show lights control visual indicator
                                         setTimeout(() => {
                                             showLightsActionIndicator(aiMessageDiv, room, status === 'on');
@@ -570,10 +641,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                     // Generate API format
                                     fullResponse += data.response;
                                 }
-                                
+
                                 // Update the UI
                                 aiMessageDiv.innerHTML = renderMarkdown(fullResponse);
-                                
+
                                 // Scroll to latest content
                                 chatContainer.scrollTop = chatContainer.scrollHeight;
                             } catch (error) {
@@ -581,19 +652,21 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         }
                     });
-                    
+
                     // Continue reading
                     return reader.read().then(processText);
                 }
-                
+
                 // Start processing the stream
                 return reader.read().then(processText);
             }).catch(error => {
                 console.error('Fetch error:', error);
+
+                // Reset generating state and update button
                 isGenerating = false;
                 currentController = null;
                 updateSendButton(); // Reset button to "Send"
-                
+
                 // Show error in the message area if it's not an abort error
                 if (error.name !== 'AbortError') {
                     aiMessageDiv.textContent = 'An error occurred: ' + error.message;
@@ -603,9 +676,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         aiMessageDiv.textContent = 'Response generation stopped.';
                     } else {
                         // Append a note that generation was stopped
-                        aiMessageDiv.innerHTML = renderMarkdown(fullResponse) + 
-                            '<div class="generation-stopped">(Response generation stopped)</div>';
-                        
+                        aiMessageDiv.innerHTML = renderMarkdown(fullResponse) +
+                            '<div class="generation-stopped" style="color: #e53935; margin-top: 8px; font-style: italic; border-top: 1px solid #eee; padding-top: 8px;">Generation stopped by user</div>';
+
                         // Add the partial response to messages array
                         messages.push({
                             role: 'assistant',
@@ -613,11 +686,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     }
                 }
-                
+
                 // Log browser console for debugging
                 console.error('Streaming error:', error);
             });
-            
+
         } catch (error) {
             console.error('Error:', error);
             isGenerating = false;
@@ -626,11 +699,11 @@ document.addEventListener('DOMContentLoaded', () => {
             showError('An error occurred. Please try again.');
         }
     }
-    
+
     function addMessage(sender, content) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}-message`;
-        
+
         if (content) {
             if (sender === 'ai') {
                 messageDiv.innerHTML = renderMarkdown(content);
@@ -638,17 +711,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 messageDiv.textContent = content;
             }
         }
-        
+
         chatContainer.appendChild(messageDiv);
         return messageDiv;
     }
-    
+
     function showError(message) {
         const errorDiv = document.createElement('div');
         errorDiv.className = 'error';
         errorDiv.textContent = message;
         chatContainer.appendChild(errorDiv);
-        
+
         // Remove after 5 seconds
         setTimeout(() => {
             if (errorDiv.parentNode) {
@@ -656,7 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 5000);
     }
-    
+
     async function fetchModels() {
         try {
             const response = await fetch(window.CHAT_CONFIG.API.MODELS);
@@ -670,82 +743,93 @@ document.addEventListener('DOMContentLoaded', () => {
             return [];
         }
     }
-    
+
     function renderMarkdown(text) {
         if (!text) return '';
-        
+
         // Very simple Markdown rendering
         // This is not a complete Markdown implementation, just handles basics
-        
+
         // Code blocks
         text = text.replace(/\`\`\`([\s\S]*?)\`\`\`/g, '<pre><code>$1</code></pre>');
-        
+
         // Inline code
         text = text.replace(/\`([^\`]+)\`/g, '<code>$1</code>');
-        
+
         // Headers
         text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
         text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
         text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-        
+
         // Bold
         text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        
+
         // Italic
         text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-        
+
         // Lists (simple implementation)
         text = text.replace(/^- (.+)$/gm, '• $1<br>');
-        
+
         // Paragraphs
         text = text.replace(/\n\n/g, '<br><br>');
-        
+
         return text;
     }
 
     // Function to stop generating
-    function stopGenerating() {
-        if (currentController) {
-            currentController.abort();
-            currentController = null;
-            isGenerating = false;
-            updateSendButton();
-            console.log("Generation aborted by user");
-        }
-    }
-    
-    // Function to update button text and style
-    function updateSendButton() {
-        if (isGenerating) {
-            sendButton.textContent = "Stop";
-            sendButton.classList.add("stop-button");
-        } else {
-            sendButton.textContent = "Send";
-            sendButton.classList.remove("stop-button");
-        }
-    }
+    // This function already exists earlier in the code - REMOVED DUPLICATE
 
     // Function to display a visual indication of light control
     function showLightsActionIndicator(messageDiv, room, isOn) {
         // Create a light indicator element
         const lightIndicator = document.createElement('div');
         lightIndicator.className = `lights-indicator ${isOn ? 'lights-on' : 'lights-off'}`;
-        
+
         // Set content based on light status
         const statusText = isOn ? 'ON' : 'OFF';
         const icon = isOn ? '💡' : '⚪';
-        
+
         lightIndicator.innerHTML = `
             <div class="lights-room">${room.toUpperCase()}</div>
             <div class="lights-status">${icon} ${statusText}</div>
         `;
-        
+
         // Append to message div
         messageDiv.appendChild(lightIndicator);
-        
+
         // Add animation class after a brief delay (for transition effect)
         setTimeout(() => {
             lightIndicator.classList.add('show');
         }, 100);
     }
+
+    // Plus button menu toggle (dropdown gibi açılır menü için kesin çözüm)
+    plusButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        plusMenu.classList.toggle('show');
+    });
+    // Menü dışına tıklanınca menüyü kapat
+    document.addEventListener('click', (e) => {
+        if (plusMenu.classList.contains('show')) {
+            plusMenu.classList.remove('show');
+        }
+    });
+    // Menüye tıklanırsa kapanmasın
+    plusMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+    // Upload PDF (şimdilik boş)
+    uploadPdf.addEventListener('click', () => {
+        plusMenu.classList.remove('show');
+        // TODO: PDF yükleme işlemi burada yapılacak
+        alert('PDF upload coming soon!');
+    });
+    // Upload a Photo: image tabına geçiş
+    uploadPhoto.addEventListener('click', () => {
+        plusMenu.classList.remove('show');
+        imageTab.classList.add('active');
+        chatTab.classList.remove('active');
+        imageView.style.display = 'block';
+        chatView.style.display = 'none';
+    });
 });
