@@ -467,22 +467,21 @@ def image_predict_with_explanation():
             Based on the image classification results provided, explain what the image contains, the confidence level,
             and any other interesting insights. Be concise but informative.
             """
-            
-            # Prepare the user message with prediction results
-            user_message = f"""
-            The image classification results are:
-            - Prediction: {prediction_results.get('prediction')}
-            - Confidence: {prediction_results.get('confidence')}
-            - Score: {prediction_results.get('score')}
-            - Status: {prediction_results.get('status')}
-            
-            Please explain these results in a conversational way. The user uploaded an image and wants to understand what the AI detected.
-            """
-            
+
+            # Improved user message: include raw JSON and optional user message
+            user_text = data.get('user_message', '')
+            user_message = (
+                "The user uploaded an image for classification. "
+                "Here are the raw prediction results as JSON:\n"
+                f"{json.dumps(prediction_results, indent=2)}\n\n"
+                "Please explain these results in a friendly, conversational way for a non-technical user."
+            )
+            if user_text:
+                user_message += f"\n\nThe user also said: {user_text}"
+
             # Call LLM for explanation
             try:
                 print(f"Sending request to Ollama API at {OLLAMA_API_HOST}/api/chat with model: {model}")
-                
                 llm_response = requests.post(
                     f"{OLLAMA_API_HOST}/api/chat",
                     json={
@@ -535,10 +534,12 @@ def image_predict_with_explanation():
                 explanation = llm_data["response"]
             
             # Return combined results
+            # Show the JSON output in the chat as a formatted code block
             return jsonify({
                 "success": True,
                 "prediction": prediction_results,
-                "explanation": explanation or "No explanation available"
+                "explanation": explanation or "No explanation available",
+                "prediction_json": json.dumps(prediction_results, indent=2)  # Add pretty JSON for chat display
             })
                 
         except requests.RequestException as e:
@@ -578,9 +579,19 @@ def image_predict_with_explanation_stream():
                 "error": "No image file selected"
             }), 400
         
-        # Get the LLM model to use for explanation
+        # Get the LLM model and chat history to use for explanation
         data = request.form.to_dict()
-        model = data.get('model', DEFAULT_MODEL)
+        # Always use llama3.2:latest as sub-model
+        model = 'llama3.2:latest'
+        # Get chat history if provided
+        messages_json = data.get('messages')
+        if messages_json:
+            try:
+                messages = json.loads(messages_json)
+            except Exception:
+                messages = []
+        else:
+            messages = []
         
         # Forward the image file to the image prediction API
         files = {'image': (image_file.filename, image_file.read(), image_file.content_type)}
@@ -602,26 +613,37 @@ def image_predict_with_explanation_stream():
             prediction_results = response.json()
             print(f"Got prediction results: {prediction_results}")
             
-            # Step 2: Stream the LLM explanation
-            system_prompt = """
-            You are an AI assistant that explains image classification results in a friendly, conversational way.
-            Based on the image classification results provided, explain what the image contains, the confidence level,
-            and any other interesting insights. Be concise but informative.
-            """
-            
-            # Prepare the user message with prediction results
-            user_message = f"""
-            The image classification results are:
-            - Prediction: {prediction_results.get('prediction')}
-            - Confidence: {prediction_results.get('confidence')}
-            - Score: {prediction_results.get('score')}
-            - Status: {prediction_results.get('status')}
-            
-            Please explain these results in a conversational way. The user uploaded an image and wants to understand what the AI detected.
-            """
+            # Step 2: Stream the LLM (sub-model) explanation
+            # Improved system prompt for multiple results per image
+            system_prompt = (
+                "You are an AI assistant that explains image classification results for a user who uploaded a single photo. "
+                "The model may return multiple predictions (for example, for different crops or augmentations of the same image). "
+                "You will receive the raw prediction results as a JSON array or object. "
+                "Summarize the overall result for the user, explain the most likely class, confidence, and any interesting details. "
+                "If there are multiple predictions, synthesize them into a single, clear explanation. "
+                "Do not show the raw JSON or technical details. Be concise, friendly, and non-technical."
+            )
+
+            # Add prediction as an assistant message to the chat history (not shown to user, just for LLM context)
+            prediction_message = {
+                "role": "assistant",
+                "content": (
+                    "Here are the raw prediction results as JSON (may be a list of results for the same image):\n"
+                    f"{json.dumps(prediction_results, indent=2)}"
+                )
+            }
+            # Optionally, user text (if any) can be appended as a user message
+            user_text = data.get('text', '')
+            if user_text:
+                messages.append({"role": "user", "content": user_text})
+            # Compose the full chat history for LLM
+            full_messages = []
+            full_messages.append({"role": "system", "content": system_prompt})
+            full_messages.extend(messages)
+            full_messages.append(prediction_message)
 
             def generate():
-                # First yield the prediction results as a single JSON object
+                # First yield the prediction results as a single JSON object (for frontend logic, not for user display)
                 yield f"data: {json.dumps({'type': 'prediction', 'data': prediction_results})}\n\n"
                 
                 # Then start streaming the LLM explanation
@@ -630,10 +652,7 @@ def image_predict_with_explanation_stream():
                         f"{OLLAMA_API_HOST}/api/chat",
                         json={
                             "model": model,
-                            "messages": [
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": user_message}
-                            ],
+                            "messages": full_messages,
                             "stream": True
                         },
                         stream=True
@@ -645,7 +664,6 @@ def image_predict_with_explanation_stream():
                     
                     for line in response.iter_lines():
                         if line:
-                            # Add metadata to identify this as explanation content
                             yield f"data: {json.dumps({'type': 'explanation', 'content': line.decode('utf-8')})}\n\n"
                             
                 except Exception as e:

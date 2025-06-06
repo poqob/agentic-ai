@@ -251,6 +251,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- DOGS-CATS CLASSIFIER INTEGRATION ---
+    // If the user is on the image analysis tab, override the default endpoint to use the dogs-cats classifier
+    imageUploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const file = imageInput.files[0];
+        if (!file) {
+            alert('Please select an image');
+            return;
+        }
+
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('image', file);
+
+        // Show loading state
+        predictionContent.innerHTML = 'Analyzing image...';
+        predictionResult.style.display = 'block';
+
+        // Send image to dogs-cats classifier backend
+        try {
+            const response = await fetch('http://localhost:5003/predict', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.status === 'success' && result.prediction) {
+                predictionContent.innerHTML = `<b>Prediction:</b> ${result.prediction}<br><b>Confidence:</b> ${(result.confidence * 100).toFixed(2)}%`;
+            } else {
+                predictionContent.innerHTML = `<b>Error:</b> ${result.error || 'Unknown error'}`;
+            }
+        } catch (error) {
+            predictionContent.innerHTML = `<b>Error:</b> ${error.message}`;
+        }
+    });
+    // --- END DOGS-CATS CLASSIFIER INTEGRATION ---
+
     // Function to handle streaming image analysis
     async function handleStreamingImageAnalysis(formData, modelName) {
         try {
@@ -562,6 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let fullResponse = '';
+                let stoppedByUser = false; // <-- Add this flag
 
                 // Remove typing indicator
                 if (typingIndicator.parentNode) {
@@ -575,12 +619,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         isGenerating = false;
                         currentController = null;
                         updateSendButton(); // Reset button to "Send"
-
-                        // Add assistant message to messages array
-                        messages.push({
-                            role: 'assistant',
-                            content: fullResponse
-                        });
+                        // Only add message if not stopped by user
+                        if (!stoppedByUser) {
+                            messages.push({
+                                role: 'assistant',
+                                content: fullResponse
+                            });
+                        }
                         return;
                     }
 
@@ -647,24 +692,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (error.name !== 'AbortError') {
                     aiMessageDiv.textContent = 'An error occurred: ' + error.message;
                 } else {
-                    // User initiated cancel - keep the partial output
+                    // User initiated cancel - keep the partial output, but do not append further text
+                    stoppedByUser = true;
+                    // Optionally, show a subtle note
                     if (fullResponse.trim() === '') {
                         aiMessageDiv.textContent = 'Response generation stopped.';
                     } else {
-                        // Append a note that generation was stopped
                         aiMessageDiv.innerHTML = renderMarkdown(fullResponse) +
                             '<div class="generation-stopped" style="color: #e53935; margin-top: 8px; font-style: italic; border-top: 1px solid #eee; padding-top: 8px;">Generation stopped by user</div>';
-
-                        // Add the partial response to messages array
-                        messages.push({
-                            role: 'assistant',
-                            content: fullResponse
-                        });
                     }
+                    // Do NOT push the partial response to messages array
                 }
-
-                // Log browser console for debugging
-                console.error('Streaming error:', error);
             });
 
         } catch (error) {
@@ -807,12 +845,211 @@ document.addEventListener('DOMContentLoaded', () => {
         // TODO: PDF yükleme işlemi burada yapılacak
         alert('PDF upload coming soon!');
     });
-    // Upload a Photo: image tabına geçiş
+    // Upload a Photo: only open file picker, do not show or switch any view
+    uploadPhoto.addEventListener('click', (e) => {
+        plusMenu.classList.remove('show');
+        chatImageInput.click();
+    });
+
+    // --- IMAGE UPLOAD PREVIEW FRAME FOR CHAT ---
+    // Create image preview frame above chat input
+    let chatImagePreviewFrame = document.getElementById('chat-image-preview-frame');
+    if (!chatImagePreviewFrame) {
+        chatImagePreviewFrame = document.createElement('div');
+        chatImagePreviewFrame.id = 'chat-image-preview-frame';
+        chatImagePreviewFrame.style.display = 'none';
+        chatImagePreviewFrame.style.textAlign = 'center';
+        chatImagePreviewFrame.style.margin = '16px 0 8px 0'; // More margin above and below
+        chatImagePreviewFrame.innerHTML = `
+            <img id="chat-image-preview-img" style="max-width:180px;max-height:120px;display:block;margin:0 auto 10px auto;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);border:1.5px solid #e0e0e0;padding:10px;background:#fafbfc;" />
+            <button id="remove-chat-image" style="background:#ff4d4f;color:#fff;border:none;padding:6px 18px;border-radius:20px;cursor:pointer;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,0.07);transition:background 0.2s;">✖ Remove</button>
+        `;
+        userInput.parentNode.insertBefore(chatImagePreviewFrame, userInput);
+    }
+    let chatImagePreviewImg = document.getElementById('chat-image-preview-img');
+    let removeChatImageBtn = document.getElementById('remove-chat-image');
+
+    // Add a hidden file input for photo upload in chat view
+    let chatImageInput = document.getElementById('chat-image-input');
+    if (!chatImageInput) {
+        chatImageInput = document.createElement('input');
+        chatImageInput.type = 'file';
+        chatImageInput.accept = 'image/*';
+        chatImageInput.style.display = 'none';
+        chatImageInput.id = 'chat-image-input';
+        document.body.appendChild(chatImageInput);
+    }
+
+    // Upload a Photo: trigger file input, show preview frame
     uploadPhoto.addEventListener('click', () => {
         plusMenu.classList.remove('show');
-        imageTab.classList.add('active');
-        chatTab.classList.remove('active');
-        imageView.style.display = 'block';
-        chatView.style.display = 'none';
+        // Reset the value so the same file can be selected again
+        chatImageInput.value = '';
+        chatImageInput.click();
     });
+
+    // When image selected, show preview frame
+    let chatImageFile = null;
+    chatImageInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        chatImageFile = file;
+        chatImagePreviewImg.src = URL.createObjectURL(file);
+        chatImagePreviewFrame.style.display = 'block';
+    });
+    // Remove image button
+    removeChatImageBtn.addEventListener('click', () => {
+        chatImageFile = null;
+        chatImagePreviewFrame.style.display = 'none';
+        chatImagePreviewImg.src = '';
+    });
+
+    // --- OVERRIDE SEND BUTTON TO HANDLE IMAGE+TEXT ---
+    // Save original sendMessage
+    const originalSendMessage = sendMessage;
+    sendButton.removeEventListener('click', sendMessage);
+    sendButton.addEventListener('click', async () => {
+        if (isGenerating) {
+            stopGenerating();
+            return;
+        }
+        const userMessage = userInput.value.trim();
+        // If no image selected, use original send
+        if (!chatImageFile) {
+            originalSendMessage();
+            return;
+        }
+        // If image selected, send image+text
+        // Show user message in chat (do not show '[Image uploaded]' text)
+        const userMsgDiv = addMessage('user', userMessage);
+        // Show image preview in chat
+        const imgPreview = document.createElement('img');
+        imgPreview.src = URL.createObjectURL(chatImageFile);
+        imgPreview.style.maxWidth = '200px';
+        imgPreview.style.display = 'block';
+        userMsgDiv.appendChild(imgPreview);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('image', chatImageFile);
+        if (userMessage) formData.append('text', userMessage);
+        // Add AI message for classification
+        let aiMsg = addMessage('ai', 'Analyzing image...');
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        // Clear preview and input
+        chatImageFile = null;
+        chatImagePreviewFrame.style.display = 'none';
+        chatImagePreviewImg.src = '';
+        userInput.value = '';
+        // Set generation state and update button
+        isGenerating = true;
+        updateSendButton();
+        // Create AbortController for streaming
+        currentController = new AbortController();
+        const signal = currentController.signal;
+        try {
+            const response = await fetch(window.CHAT_CONFIG.API.IMAGE_PREDICT_WITH_EXPLANATION_STREAM, {
+                method: 'POST',
+                body: formData,
+                signal
+            });
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let explanationText = '';
+            aiMsg.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const eventData = JSON.parse(line.substring(6));
+                            if (eventData.type === 'explanation') {
+                                let contentToAdd = '';
+                                try {
+                                    const llmData = JSON.parse(eventData.content);
+                                    if (llmData.message && llmData.message.content) {
+                                        contentToAdd = llmData.message.content;
+                                    } else if (llmData.response) {
+                                        contentToAdd = llmData.response;
+                                    }
+                                } catch {
+                                    contentToAdd = eventData.content;
+                                }
+                                if (contentToAdd) {
+                                    explanationText += contentToAdd;
+                                    aiMsg.innerHTML = renderMarkdown(explanationText);
+                                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                                }
+                            } else if (eventData.type === 'error') {
+                                aiMsg.innerHTML = `<b>Error:</b> ${eventData.message}`;
+                            }
+                        } catch (e) {
+                            // Ignore parse errors
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            aiMsg.innerHTML = `<b>Error:</b> ${error.message}`;
+        } finally {
+            isGenerating = false;
+            currentController = null;
+            updateSendButton();
+        }
+    });
+
+    // Stream LLM explanation as a chat message (send full prediction result as JSON)
+    async function streamLlmExplanation(predictionResult, userText) {
+        const aiMsg = addMessage('ai', '');
+        aiMsg.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        try {
+            const response = await fetch(window.CHAT_CONFIG.API.GENERATE_STREAM, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: getCurrentModel(),
+                    messages: [
+                        { role: 'system', content: 'You are an expert in image classification.' },
+                        { role: 'user', content: `I uploaded a photo. Here is the full prediction result as JSON:\n\n${JSON.stringify(predictionResult, null, 2)}${userText ? '\n\nUser said: ' + userText : ''}\n\nPlease interpret and explain the result in detail for a non-technical user.` }
+                    ]
+                })
+            });
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullText = '';
+            let done = false;
+            aiMsg.innerHTML = '';
+            while (!done) {
+                const { value, done: streamDone } = await reader.read();
+                done = streamDone;
+                if (value) {
+                    const chunk = decoder.decode(value, { stream: true });
+                    chunk.split('\n').forEach(line => {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                if (data.message && data.message.content) {
+                                    fullText += data.message.content;
+                                    aiMsg.innerHTML = renderMarkdown(fullText);
+                                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                                } else if (data.response) {
+                                    fullText += data.response;
+                                    aiMsg.innerHTML = renderMarkdown(fullText);
+                                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                                }
+                            } catch (e) { /* ignore parse errors */ }
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            aiMsg.innerHTML = `<b>LLM Error:</b> ${error.message}`;
+        }
+    }
 });
