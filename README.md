@@ -1,215 +1,116 @@
 # Ollama Flask API
 
-A Flask application that provides a web interface for Ollama LLM models with additional capabilities for regression modeling and image classification through AI-powered interpretation.
+A modular Flask application providing a web interface for Large Language Model (LLM) chat, regression analysis, and image classification, with real-time streaming and AI-powered explanations. The project integrates multiple AI services and offers a modern, responsive frontend for both text and image-based interactions.
 
 ## Features
 
-- Ollama API integration for text generation and chat
-- Web-based chat interface with Markdown rendering
-- Real-time streaming responses
-- Regression model integration
-- Natural language queries to regression models
-- Image classification with AI explanations
-- Real-time streaming image analysis and explanations
-- Cross-origin request support
-- Mobile responsive design
+- **LLM Chat Interface**: Chat with LLMs (via Ollama API) using a web UI with Markdown rendering and real-time streaming responses.
+- **Regression Analysis**: Query regression models directly or via natural language, with LLM-generated explanations for results.
+- **Image Classification**: Upload images for classification and receive detailed, non-technical explanations from an LLM.
+- **Streaming Support**: Both chat and image analysis support real-time streaming, allowing users to stop generation at any time.
+- **Home Lights Control**: Control simulated home lights via chat or API, including natural language commands.
+- **Mobile Responsive**: The web interface is designed for both desktop and mobile devices.
+- **Extensible Architecture**: Easily add new ML/AI services or UI features.
 
-## Feature Highlights
+## Architecture Overview
 
-### Real-time Streaming Responses
-Both chat and image analysis support real-time streaming responses, providing immediate feedback to users while the model is generating content. Users can stop generation at any time with the "Durdur" (Stop) button, and the partial generated content will be preserved.
-
-### LLM-enhanced ML Model Interpretation
-The application combines traditional ML models with LLMs to provide natural language explanations of model outputs:
-- Regression results are analyzed by LLMs to provide context and explanations
-- Image classification results are enhanced with detailed LLM descriptions
-
-### Service Integration
-The application acts as an orchestration layer between multiple AI services:
-- Ollama for LLM capabilities (text generation and chat)
-- Regression service (port 5001)
-- Image classification service (port 5003)
+- **Flask Backend**: Orchestrates API routing, service integration, and CORS.
+- **Ollama Integration**: Connects to Ollama LLM API (default port 11434) for chat and text generation.
+- **Regression Service**: External ML service (default port 5001) for regression predictions.
+- **Image Classification Service**: External ML service (default port 5003) for image analysis and explanations.
+- **Web Frontend**: Modern, responsive UI with chat and image analysis tabs, model selection, and real-time feedback.
 
 ## API Endpoints
 
-### LLM API Endpoints
-
+### LLM Endpoints
 - `GET /api/models`: List available models
 - `POST /api/generate`: Generate text
-- `POST /api/generate/stream`: Generate text with streaming response
+- `POST /api/generate/stream`: Generate text (streaming)
 - `POST /api/chat`: Chat completion
-- `POST /api/chat/stream`: Chat completion with streaming response
+- `POST /api/chat/stream`: Chat completion (streaming)
 
-### Regression API Endpoints
-
-- `POST /api/regression/predict`: Forward request directly to regression model
-- `POST /api/regression/predict_from_text`: Extract data from text and send to regression model
+### Regression Endpoints
+- `POST /api/regression/predict`: Predict from structured data
+- `POST /api/regression/predict_from_text`: Predict from natural language
 - `GET /api/regression/status`: Check regression service status
 
-### Image API Endpoints
+### Image Endpoints
+- `POST /api/image/predict`: Image classification
+- `POST /api/image/predict_with_explanation`: Classification + LLM explanation
+- `POST /api/image/predict_with_explanation/stream`: Streaming explanation
 
-- `POST /api/image/predict`: Process image with classification model
-- `POST /api/image/predict_with_explanation`: Process image and explain with LLM
-- `POST /api/image/predict_with_explanation/stream`: Process image and stream LLM explanation in real-time
+### Home Lights Endpoints
+- `GET /api/lights/status`: Check lights service
+- `POST /api/lights/control`: Control lights (structured)
+- `POST /api/lights/control_from_text`: Control lights (natural language)
 
-### Home Lights API Endpoints
-
-- `GET /api/lights/status`: Check if home lights control service is running
-- `POST /api/lights/control`: Control lights in a specified room
-- `POST /api/lights/control_from_text`: Control lights using natural language commands
-
-> Note: The LLM chat interface automatically detects and processes light control commands.
-
-> Note: All API endpoints also work without the `/api/` prefix for backward compatibility.
+> All endpoints also work without the `/api/` prefix for backward compatibility.
 
 ## Usage Examples
 
-### Direct Regression Prediction
-
+### Chat with LLM
+Send a message via the web UI or:
 ```bash
-curl -X POST http://localhost:5000/api/regression/predict \
-  -H "Content-Type: application/json" \
-  -d '{
-    "age": 30,
-    "sex": "male",
-    "bmi": 25.0,
-    "children": 1,
-    "smoker": "no",
-    "region": "northeast", 
-    "model": "random_forest"
-  }'
+curl -X POST http://localhost:5000/api/chat -H "Content-Type: application/json" -d '{"model": "llama3.2:latest", "messages": [{"role": "user", "content": "Hello!"}]}'
 ```
 
-### Text-Based Regression Prediction
-
+### Regression Prediction
 ```bash
-curl -X POST http://localhost:5000/api/regression/predict_from_text \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "The patient is a 30-year-old male with a BMI of 25, has one child, does not smoke and lives in the northeast region. Make a regression prediction for this patient.",
-    "model": "mistral:7b"
-  }'
+curl -X POST http://localhost:5000/api/regression/predict -H "Content-Type: application/json" -d '{"age": 30, "sex": "male", "bmi": 25.0, "children": 1, "smoker": "no", "region": "northeast", "model": "random_forest"}'
 ```
 
 ### Image Classification with Explanation
-
 ```bash
-# Using curl with form data for image upload
-curl -X POST http://localhost:5000/api/image/predict_with_explanation \
-  -F "image=@path/to/your/image.jpg" \
-  -F "model=mistral:7b"
-```
-
-### Streaming Image Analysis
-
-```javascript
-// JavaScript example for streaming image analysis
-fetch('/api/image/predict_with_explanation/stream', {
-    method: 'POST',
-    body: formData // FormData with image and model
-})
-.then(response => {
-    const reader = response.body.getReader();
-    // Process the stream chunks as they arrive...
-})
+curl -X POST http://localhost:5000/api/image/predict_with_explanation -F "image=@path/to/image.jpg" -F "model=llama3.2:latest"
 ```
 
 ### Home Lights Control
-
 ```bash
-# Direct lights control
-curl -X POST http://localhost:5000/api/lights/control \
-  -H "Content-Type: application/json" \
-  -d '{
-    "room": "salon",
-    "lights": true
-  }'
-
-# Natural language lights control
-curl -X POST http://localhost:5000/api/lights/control_from_text \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Salonun ışıklarını aç",
-    "model": "mistral:7b"
-  }'
-
-# Check lights service status
-curl http://localhost:5000/api/lights/status
+curl -X POST http://localhost:5000/api/lights/control_from_text -H "Content-Type: application/json" -d '{"text": "Turn on the living room lights", "model": "llama3.2:latest"}'
 ```
-
-You can also control lights through the chat interface by sending messages like:
-- "Salonun ışıklarını aç"
-- "Mutfaktaki ışıkları kapat"
-- "Yatak odasının lambalarını söndür"
 
 ## Setup
 
-1. Install required packages:
+1. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-
-2. Start the Flask application:
+2. Start the Flask app:
    ```bash
    python run.py
    ```
-
-3. Open http://localhost:5000 in your browser
-
+3. Open [http://localhost:5000](http://localhost:5000) in your browser.
 4. Ensure the following services are running:
-   - Ollama API on port 11434 (default)
-   - Regression service on port 5001
-   - Image classification service on port 5003
+   - Ollama API (port 11434)
+   - Regression service (port 5001)
+   - Image classification service (port 5003)
 
 ## Configuration
 
-The application can be configured in `config.py`:
-
-### Backend configuration (`config.py`):
-- Ollama API host (default: `http://localhost:11434`)
-- Regression API host and endpoint
-- Image classification API host and endpoint
-- Server host, port and debug settings
-- Default LLM model
-- CORS settings
-
-### Frontend configuration (`static/config.js`):
-- API endpoint paths
-- Default model settings
-- UI parameters (timeouts, display limits)
+- **Backend**: Edit `config.py` for API hosts, ports, default model, and CORS.
+- **Frontend**: Edit `static/config.js` for API paths, default model, and UI settings.
 
 ## Requirements
 
-### Required Services
-- **Ollama**: Running on port 11434 with models like `mistral:7b` installed
-- **Regression Service**: A machine learning service running on port 5001
-- **Image Classification Service**: An image processing service running on port 5003
-
-### Dependencies
-- Flask and Flask-CORS
-- Requests
 - Python 3.8+
+- Flask, Flask-CORS, Requests
+- Ollama (with models like `llama3.2:latest` installed)
+- Regression and image classification services (see `/extensions` for examples)
+
+## Extending the Project
+
+- Add new ML/AI services by creating new endpoints and updating the frontend as needed.
+- Customize the UI via `static/` files (HTML, CSS, JS).
+- See `/extensions` for example ML services (e.g., dogs-cats classifier, home lights simulation).
 
 ## Future Development
 
-Potential enhancements for future versions:
 - User authentication and session management
-- Enhanced mobile responsiveness
-- Comprehensive unit tests
-- Support for more LLM models
-- Extended error handling for edge cases
+- More LLM model support and dynamic model loading
+- Enhanced mobile UI and accessibility
+- Comprehensive unit and integration tests
 - Performance optimizations for large images and complex queries
 
-## Architecture
+## License
 
-The application is designed with a modular architecture:
-
-1. **Flask Backend**: Handles API routing and service integration
-2. **Ollama Integration**: Provides LLM capabilities via the Ollama API
-3. **Regression Service**: External ML service for regression predictions
-4. **Image Classification Service**: External ML service for image analysis
-5. **Web Interface**: Responsive UI with chat and image analysis tabs
-
-## Mobile Compatibility
-
-The application is designed to work well on mobile devices with a responsive layout.
+MIT License
