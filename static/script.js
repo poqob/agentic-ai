@@ -1,4 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // On page load, set llama3.2:latest as selected in the model menu
+    // (This ensures the button is visually selected)
+    const modelMenu = document.getElementById('model-menu');
+    if (modelMenu) {
+        const llamaBtn = modelMenu.querySelector('[data-model="llama3.2:latest"]');
+        if (llamaBtn) {
+            modelMenu.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+            llamaBtn.classList.add('selected');
+        }
+    }
+
     const chatContainer = document.getElementById('chat-container');
     const userInput = document.getElementById('user-input');
     const chatView = document.getElementById('chat-view');
@@ -45,6 +56,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p>Type a message below to chat with our AI models.</p>
             `;
             chatContainer.appendChild(welcomeDiv);
+
+            // --- FINAL FIX: Remove all height/minHeight/maxHeight/flex from chatContainer and its parents ---
+            function resetBoxSizing(el) {
+                if (!el) return;
+                el.style.height = '';
+                el.style.minHeight = '';
+                el.style.maxHeight = '';
+                el.style.flexGrow = '';
+                el.style.flexShrink = '';
+                el.style.flexBasis = '';
+                el.style.display = '';
+                el.style.justifyContent = '';
+                el.style.alignItems = '';
+                el.style.alignSelf = '';
+            }
+            resetBoxSizing(chatContainer);
+            let parent = chatContainer.parentElement;
+            // Traverse up to 3 levels to clear any flex/grid/height settings
+            for (let i = 0; i < 3 && parent; i++) {
+                resetBoxSizing(parent);
+                parent = parent.parentElement;
+            }
+            // Also reset input container
+            const inputContainer = document.getElementById('input-container');
+            if (inputContainer) {
+                inputContainer.style.position = '';
+                inputContainer.style.bottom = '';
+                inputContainer.style.left = '';
+                inputContainer.style.right = '';
+                inputContainer.style.marginTop = '';
+                inputContainer.style.marginBottom = '';
+                inputContainer.style.transform = '';
+                inputContainer.style.alignSelf = '';
+            }
         });
     }
     if (imageTab) {
@@ -1054,5 +1099,69 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             aiMsg.innerHTML = `<b>LLM Error:</b> ${error.message}`;
         }
+    }
+
+    // Helper to get current model, defaulting to llama3.2:latest if not selected
+    function getCurrentModel() {
+        const modelMenu = document.getElementById('model-menu');
+        if (modelMenu) {
+            // Always set llama3.2:latest as selected visually and logically
+            const llamaBtn = modelMenu.querySelector('[data-model="llama3.2:latest"]');
+            if (llamaBtn) {
+                // Remove .selected from all
+                modelMenu.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+                llamaBtn.classList.add('selected');
+                return 'llama3.2:latest';
+            }
+            // Fallback: if not found, use any selected
+            const selected = modelMenu.querySelector('.selected');
+            if (selected && selected.dataset && selected.dataset.model) {
+                return selected.dataset.model;
+            }
+        }
+        // Default model
+        return 'llama3.2:latest';
+    }
+
+    // Add padding to the input container (ask something box and buttons)
+    const inputContainer = document.getElementById('input-container');
+    if (inputContainer) {
+        inputContainer.style.paddingBottom = '100px'; // Adjust value as needed
+    }
+
+    // Widen the chat container (if not already present)
+    if (chatContainer) {
+        chatContainer.style.maxWidth = '750px';
+        chatContainer.style.width = '100%';
+        chatContainer.style.marginLeft = 'auto';
+        chatContainer.style.marginRight = 'auto';
+    }
+
+    // --- FORCE WHITE THEME (quick JS override, for full effect update your CSS) ---
+    document.body.style.background = '#fff';
+    document.body.style.color = '#222';
+    // Remove purple backgrounds from common elements
+    const elements = document.querySelectorAll('[style*="background"], .purple, .theme-mor, .header, .footer');
+    elements.forEach(el => {
+        el.style.background = '#fff';
+        el.style.backgroundColor = '#fff';
+        el.style.color = '#222';
+        el.style.borderColor = '#eee';
+    });
+    // Optionally, override links and buttons
+    const links = document.querySelectorAll('a, button');
+    links.forEach(el => {
+        el.style.background = '#fff';
+        el.style.color = '#222';
+        el.style.borderColor = '#eee';
+    });
+
+    // --- FIX LOGO INVERSION ---
+    // If the logo was inverted via CSS filter, remove it
+    const logo = document.querySelector('.app-logo, #app-logo, .logo, img[alt="logo"]');
+    if (logo) {
+        logo.style.filter = '';
+        logo.style.webkitFilter = '';
+        logo.classList.remove('inverted', 'invert', 'logo-invert');
     }
 });
