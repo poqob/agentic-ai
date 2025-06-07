@@ -12,6 +12,39 @@ A modular Flask application providing a web interface for Large Language Model (
 - **Mobile Responsive**: The web interface is designed for both desktop and mobile devices.
 - **Extensible Architecture**: Easily add new ML/AI services or UI features.
 
+## Screenshots
+
+### Home Page Interface
+![Home Page Interface](screenshots/home-page.png)
+*The main interface of the application showing the chat UI with model selection options.*
+
+### Language Models List
+![Language Models List](screenshots/langmodels-list.png)
+*Available language models that can be selected for chat and explanation generation.*
+
+### Query Interface
+![Query Interface](screenshots/query.png)
+*The chat interface showing a conversation with the selected language model.*
+
+### Image Prediction
+![Image Prediction](screenshots/img-predict.png)
+*Image classification interface with AI-generated explanations of the uploaded image.*
+
+### Extensions List
+![Extensions List](screenshots/extensions-list.png)
+*Available extensions that can be used with the application.*
+
+### Home Lights Simulation Example
+![Home Lights Control](screenshots/lights-extension-example.png)
+*The home lights simulation extension interface for controlling virtual home lighting.*
+
+## Video Tutorial
+
+A comprehensive video tutorial on how to set up and use this project is available on YouTube:
+[Poqob Chat Tutorial](https://www.youtube.com/watch?v=LiNRWBQKF_Y)
+
+The video covers installation, configuration, and usage of all the features in this application.
+
 ## Architecture Overview
 
 - **Flask Backend**: Orchestrates API routing, service integration, and CORS.
