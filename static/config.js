@@ -18,10 +18,10 @@ const CONFIG = {
         LIGHTS_CONTROL: '/api/lights/control',
         LIGHTS_CONTROL_FROM_TEXT: '/api/lights/control_from_text'
     },
-    
+
     // Default model
-    DEFAULT_MODEL: 'mistral:7b',
-    
+    DEFAULT_MODEL: 'llama3.2:latest',
+
     // UI configuration
     UI: {
         TYPING_INDICATOR_TIMEOUT: 30000, // 30 seconds max for typing indicator
