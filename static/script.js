@@ -688,11 +688,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentController = null;
                 updateSendButton(); // Reset button to "Send"
 
-                // Show error in the message area if it's not an abort error
-                if (error.name !== 'AbortError') {
+                // Show error in the message area if it's not an abort error or BodyStreamBuffer abort
+                if (
+                    error.name !== 'AbortError' &&
+                    error.message !== 'BodyStreamBuffer was aborted'
+                ) {
                     aiMessageDiv.textContent = 'An error occurred: ' + error.message;
                 } else {
-                    // User initiated cancel - keep the partial output, but do not append further text
+                    // User initiated cancel or BodyStreamBuffer was aborted - keep the partial output, but do not append further text
                     stoppedByUser = true;
                     // Optionally, show a subtle note
                     if (fullResponse.trim() === '') {
